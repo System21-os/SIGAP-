@@ -1,0 +1,2562 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a2417">
+<meta name="description" content="SIGAP — sistem inventory gudang andal dan persisi. Satu pintu untuk seluruh dashboard sales, marketing, dan operasional.">
+<title>SIGAP — sistem inventory gudang andal dan persisi</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e3b28'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%23d8b45a' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23d8b45a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://script.google.com" crossorigin>
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="dns-prefetch" href="https://script.google.com">
+<link rel="dns-prefetch" href="https://script.googleusercontent.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  // 1. MASUKKAN URL WEB APP BAPAK DI SINI
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwvjSCowwdZvJBIMwOJiM3GdoRdOvUjKR6kfKI7NSKjc6MQ66wcpjki2Uv6XLGEwrQlZQ/exec";
+
+  // 2. FUNGSI PROXY: Mengubah otomatis google.script.run menjadi fetch()
+  window.google = {
+    script: {
+      get run() {
+        let successCb = null;
+        let failureCb = null;
+
+        return new Proxy({}, {
+          get: function(target, prop) {
+            // Tangkap handler sukses
+            if (prop === 'withSuccessHandler') {
+              return function(cb) { successCb = cb; return this; };
+            }
+            // Tangkap handler error
+            if (prop === 'withFailureHandler') {
+              return function(cb) { failureCb = cb; return this; };
+            }
+            // Kirim request ke backend Code.gs
+            return function(payload) {
+              fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Wajib text/plain untuk bypass CORS Apps Script
+                body: JSON.stringify({ action: prop, data: payload || {} })
+              })
+              .then(res => res.json())
+              .then(data => {
+                if (successCb) successCb(data);
+              })
+              .catch(err => {
+                if (failureCb) failureCb(err);
+              });
+            };
+          }
+        });
+      }
+    }
+  };
+</script>
+<style>
+  /* ============================================================
+    SIGAP — shell UI
+     Palet mengikuti logo: hijau tua bergradasi + emas.
+     ============================================================ */
+  :root{
+    --bg-0:#04100b;
+    --bg-1:#0a2417;
+    --bg-2:#12492f;
+    --sidebar:#071c12;
+    --line:rgba(216,180,90,.16);
+    --line-soft:rgba(255,255,255,.07);
+    --txt:#e9f3ec;
+    --txt-2:#a9c4b5;
+    --muted:#7d9c8c;
+    --gold:#d8b45a;
+    --gold-lt:#f3e0a4;
+    --gold-soft:rgba(216,180,90,.12);
+    --live:#3ddc8b;
+    --sb-w:264px;
+    --sb-rail:64px;
+    --top-h:52px;
+    --rad:10px;
+    --rad-sm:6px;
+
+    /* Tiga keluarga dengan tugas masing-masing:
+       serif untuk suara, sans untuk kerja, mono untuk angka. */
+    --f-display:"Instrument Serif",Georgia,"Times New Roman",serif;
+    --f-ui:"Plus Jakarta Sans","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+    /* Skala dengan lompatan nyata, bukan 14 ukuran yang berdempetan */
+    --t-display:clamp(30px,4.6vw,46px);
+    --t-h1:26px;
+    --t-h2:17px;
+    --t-lead:14.5px;
+    --t-body:13.5px;
+    --t-ui:13px;
+    --t-sm:12px;
+    --t-xs:11px;
+    --t-micro:10px;
+    --shadow:0 18px 44px rgba(0,0,0,.45);
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{height:100%;background:#04100b}
+  body{
+    height:100%;
+    font-family:var(--f-ui);
+    font-size:var(--t-body);
+    line-height:1.6;
+    letter-spacing:-.005em;
+    color:var(--txt);
+    background:
+      radial-gradient(1100px 620px at 50% -12%, #165638 0%, rgba(22,86,56,0) 62%),
+      radial-gradient(900px 700px at 110% 110%, #0d3b26 0%, rgba(13,59,38,0) 60%),
+      linear-gradient(168deg,#0a2417 0%,#061810 55%,var(--bg-0) 100%);
+    background-attachment:fixed;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+  .mono,.tbl .mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+
+  /* Label kecil huruf besar dipakai hemat — hanya untuk penanda bagian,
+     dengan bobot sedang supaya menuntun, bukan berteriak. */
+  .eyebrow{
+    font-family:var(--f-mono);font-size:var(--t-micro);font-weight:500;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+  }
+  a{color:inherit;text-decoration:none}
+
+  ::selection{background:rgba(216,180,90,.28);color:#fff}
+  /* Cincin fokus bawaan browser diganti warna merek, tetap terlihat jelas
+     untuk yang memakai papan ketik. */
+  .btn:focus-visible,.iconbtn:focus-visible,.row:focus-visible,.card:focus-visible,
+  .brand-btn:focus-visible,.grp-head:focus-visible,.peek:focus-visible,.inp:focus-visible{
+    outline:2px solid rgba(216,180,90,.65);outline-offset:2px;
+  }
+  .inp:focus-visible{outline-offset:0}
+  .ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(216,180,90,.18);border-radius:8px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(216,180,90,.34);background-clip:padding-box;border:3px solid transparent}
+
+  /* ---------- shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns:var(--sb-w) 1fr;
+    grid-template-rows:minmax(0,1fr);
+    height:100dvh;
+    transition:grid-template-columns .24s cubic-bezier(.2,.8,.2,1);
+  }
+  .shell.rail{grid-template-columns:var(--sb-rail) 1fr}
+
+  /* ---------- sidebar ---------- */
+  .sidebar{
+    display:flex;flex-direction:column;min-width:0;min-height:0;
+    background:linear-gradient(180deg,rgba(12,45,29,.92),rgba(5,20,13,.96));
+    border-right:1px solid var(--line);
+    box-shadow:inset -1px 0 0 rgba(0,0,0,.35);
+    z-index:40;
+  }
+  .brand{
+    display:flex;align-items:center;gap:8px;
+    height:var(--top-h);padding:0 10px 0 12px;flex:none;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .brand-btn{
+    flex:1;min-width:0;display:flex;align-items:center;gap:10px;
+    padding:4px 6px 4px 4px;margin-left:-4px;border:0;border-radius:9px;
+    background:none;color:inherit;text-align:left;cursor:pointer;
+    transition:background .14s;
+  }
+  .brand-btn:hover{background:rgba(255,255,255,.05)}
+  .brand-btn:active{transform:scale(.985)}
+  .brand-mark{
+    width:30px;height:30px;flex:none;border-radius:8px;overflow:hidden;
+    background:linear-gradient(160deg,#15563a,#092518);
+    border:1px solid rgba(216,180,90,.55);
+    display:grid;place-items:center;
+  }
+  .brand-mark svg{width:100%;height:100%;display:block}
+  .brand-txt{display:block;min-width:0;overflow:hidden}
+  .brand-txt b{display:block;font-size:12.5px;font-weight:700;letter-spacing:.045em;white-space:nowrap;line-height:1.2}
+  .brand-txt b i{font-style:normal;color:var(--gold)}
+  .brand-txt span{
+    display:block;font-family:var(--f-mono);font-size:9px;font-weight:400;
+    letter-spacing:.2em;color:var(--muted);text-transform:uppercase;white-space:nowrap;margin-top:3px;
+  }
+
+  .search{position:relative;margin:10px 12px 4px;flex:none}
+  .search .ic{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);width:14px;height:14px;pointer-events:none}
+  .search input{
+    width:100%;height:31px;border-radius:var(--rad-sm);
+    background:rgba(255,255,255,.045);
+    border:1px solid var(--line-soft);
+    padding:0 26px 0 30px;font-size:var(--t-ui);outline:none;
+    transition:border-color .15s,box-shadow .15s,background .15s;
+  }
+  .search input::placeholder{color:var(--muted)}
+  .search input:focus{background:rgba(255,255,255,.07);border-color:rgba(216,180,90,.5);box-shadow:0 0 0 3px rgba(216,180,90,.1)}
+  .search kbd{
+    position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    font-size:9.5px;font-family:var(--f-mono);color:var(--muted);
+    border:1px solid var(--line-soft);border-radius:4px;padding:1px 4px;pointer-events:none;
+  }
+  .search input:focus ~ kbd{opacity:0}
+
+  .nav{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:6px 12px 20px}
+
+  .row{
+    position:relative;display:flex;align-items:center;gap:9px;width:100%;
+    height:33px;padding:0 9px;border-radius:var(--rad-sm);
+    background:none;border:1px solid transparent;cursor:pointer;
+    color:var(--txt-2);font-size:var(--t-ui);font-weight:500;letter-spacing:-.006em;text-align:left;
+    transition:background .13s,color .13s,border-color .13s;
+  }
+  .row .ic{color:var(--muted);transition:color .13s}
+  .row:hover{background:rgba(255,255,255,.055);color:var(--txt)}
+  .row:hover .ic{color:var(--txt-2)}
+  .row.active{
+    background:linear-gradient(90deg,rgba(216,180,90,.18),rgba(216,180,90,.04));
+    border-color:rgba(216,180,90,.3);color:#fff;font-weight:600;letter-spacing:-.01em;
+  }
+  .row.active .ic{color:var(--gold-lt)}
+  .row.active::before{
+    content:"";position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+    width:3px;height:17px;border-radius:0 3px 3px 0;background:var(--gold);
+    box-shadow:0 0 10px rgba(216,180,90,.6);
+  }
+  .row .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .dot{margin-left:auto;width:5px;height:5px;border-radius:50%;background:var(--gold);opacity:0;transition:opacity .15s}
+  .row.loaded .dot{opacity:.45}
+  .row.active .dot{opacity:0}
+
+  .grp{margin-top:16px}
+  .grp:first-of-type{margin-top:10px}
+  .grp-head{
+    display:flex;align-items:center;gap:7px;width:100%;
+    padding:0 6px 7px;background:none;border:0;cursor:pointer;
+    color:var(--txt-2);font-size:11.5px;font-weight:700;letter-spacing:.085em;text-transform:uppercase;
+    border-bottom:1px solid var(--line-soft);
+    transition:color .13s;
+  }
+  .grp-head:hover{color:var(--gold-lt)}
+  .grp-head .ic{width:14px;height:14px;color:var(--gold);opacity:.85}
+  .grp-head .chev{margin-left:auto;transition:transform .2s}
+  .grp.collapsed .grp-head .chev{transform:rotate(-90deg)}
+  .grp-items{display:grid;gap:1px;padding-top:5px}
+  .grp.collapsed .grp-items{display:none}
+  .grp[hidden]{display:none}
+
+  .empty{display:none;padding:18px 8px;text-align:center;font-size:var(--t-sm);color:var(--muted)}
+  .nav.no-hit .empty{display:block}
+
+  .side-foot{flex:none;padding:10px 12px;border-top:1px solid var(--line-soft);display:flex;align-items:center;gap:8px}
+  .live{
+    display:flex;align-items:center;gap:7px;font-family:var(--f-mono);font-size:10.5px;
+    font-variant-numeric:tabular-nums;color:var(--muted);letter-spacing:.02em;white-space:nowrap;overflow:hidden;
+  }
+  .live i{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 3px rgba(61,220,139,.15);animation:pulse 2.4s ease-in-out infinite;flex:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .iconbtn{
+    width:30px;height:30px;flex:none;display:grid;place-items:center;
+    border-radius:var(--rad-sm);border:1px solid var(--line-soft);
+    background:rgba(255,255,255,.035);color:var(--txt-2);cursor:pointer;
+    transition:background .14s,color .14s,border-color .14s,transform .14s;
+  }
+  .iconbtn:hover{background:rgba(216,180,90,.12);border-color:rgba(216,180,90,.42);color:var(--gold-lt)}
+  .iconbtn:active{transform:scale(.94)}
+  .side-foot .iconbtn{margin-left:auto}
+
+  /* ---------- rail (sidebar diciutkan) ---------- */
+  .shell.rail .brand{flex-direction:column;height:auto;padding:9px 0 10px;gap:7px}
+  .shell.rail .brand-btn{flex:none;justify-content:center;margin:0;padding:4px}
+  .shell.rail .brand-txt,
+  .shell.rail .search,
+  .shell.rail .grp-head span,
+  .shell.rail .grp-head .chev,
+  .shell.rail .row .lbl,
+  .shell.rail .row .dot,
+  .shell.rail .live span{display:none}
+  .shell.rail .nav{padding:8px 10px 20px}
+  .shell.rail .row{justify-content:center;padding:0}
+  .shell.rail .row.active::before{left:-10px}
+  .shell.rail .grp-head{justify-content:center;padding:0 0 7px}
+  .shell.rail .grp.collapsed .grp-items{display:grid}
+  .shell.rail .side-foot{justify-content:center;padding:12px 0}
+  .shell.rail .live{justify-content:center}
+
+  /* ---------- main ---------- */
+  .main{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+  .topbar{
+    height:var(--top-h);flex:none;display:flex;align-items:center;gap:10px;padding:0 12px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0c2c1d,#0a2417);
+    z-index:20;
+  }
+  .crumb{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+  .crumb .grp-name{
+    font-family:var(--f-mono);font-size:var(--t-micro);font-weight:400;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);white-space:nowrap;
+  }
+  .crumb .sep{color:rgba(255,255,255,.18)}
+  .crumb .title{font-size:14px;font-weight:600;letter-spacing:-.016em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top-actions{display:flex;align-items:center;gap:6px;flex:none}
+  #btnMenu{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;background:#06150e;contain:layout paint}
+  /* Frame tidak pernah di-display:none — cukup disembunyikan lewat visibility supaya
+     layout-nya tetap tersimpan dan pindah dashboard tidak memicu relayout ulang. */
+  .frame{
+    position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .18s ease;
+  }
+  .frame.on{opacity:1;visibility:visible;pointer-events:auto}
+
+  /* ---------- loader ---------- */
+  /* Garis tipis di atas panggung: penanda bahwa permintaan sedang berjalan,
+     tetap terlihat walau dashboard sudah menampilkan sebagian isinya. */
+  .prog{
+    position:absolute;top:0;left:0;right:0;height:2px;z-index:19;
+    overflow:hidden;opacity:0;transition:opacity .25s ease;pointer-events:none;
+  }
+  .prog.on{opacity:1}
+  .prog::after{
+    content:"";position:absolute;top:0;left:0;height:100%;width:38%;
+    border-radius:0 2px 2px 0;
+    background:linear-gradient(90deg,rgba(216,180,90,0),var(--gold),rgba(216,180,90,0));
+    animation:lari 1.25s cubic-bezier(.45,0,.35,1) infinite;
+  }
+  @keyframes lari{from{transform:translateX(-100%)}to{transform:translateX(365%)}}
+
+  .loader{
+    position:absolute;inset:0;z-index:15;display:grid;place-content:center;justify-items:center;gap:16px;
+    background:radial-gradient(600px 320px at 50% 40%,#0f3b27,#06150e 70%);
+    transition:opacity .35s ease;
+  }
+  .loader.hide{opacity:0;pointer-events:none}
+  .reel{width:46px;height:46px;display:grid;place-items:center}
+  .reel svg{width:100%;height:100%;display:block;transform-origin:50% 50%;animation:putar 3.4s linear infinite}
+  @keyframes putar{to{transform:rotate(1turn)}}
+  /* Selama gelendongnya belum dipasang JS — misalnya saat awal yang lambat,
+     ketika stylesheet masih menahan eksekusi script — cincin ini yang tampil. */
+  .reel:empty{
+    border-radius:50%;
+    background:conic-gradient(from 0deg,rgba(216,180,90,0),var(--gold));
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);
+            mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);
+    animation:putar .9s linear infinite;
+  }
+
+  .spin{
+    width:38px;height:38px;border-radius:50%;
+    background:conic-gradient(from 0deg,rgba(216,180,90,0),var(--gold));
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);
+            mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);
+    animation:spin .9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(1turn)}}
+  .loader p{font-size:var(--t-sm);color:var(--muted);text-align:center;letter-spacing:.01em}
+  .loader p b{
+    display:block;font-family:var(--f-display);font-size:22px;font-weight:400;
+    letter-spacing:-.01em;color:#fff;margin-bottom:4px;
+  }
+  .hint{
+    display:none;max-width:340px;text-align:center;font-size:var(--t-sm);line-height:1.65;color:var(--muted);
+    border:1px solid var(--line);border-radius:var(--rad);padding:12px 14px;background:rgba(0,0,0,.25);
+  }
+  .loader.slow .hint{display:block}
+  .hint .btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .btn.ghost{border-color:var(--line-soft);background:rgba(255,255,255,.05);color:var(--txt-2)}
+  .btn.ghost:hover{background:rgba(255,255,255,.1);color:var(--txt)}
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;margin-top:9px;
+    border-radius:var(--rad-sm);border:1px solid rgba(216,180,90,.45);
+    background:rgba(216,180,90,.12);color:var(--gold-lt);
+    font-size:var(--t-sm);font-weight:600;letter-spacing:-.005em;cursor:pointer;transition:background .15s,transform .15s;
+  }
+  .btn:hover{background:rgba(216,180,90,.22)}
+  .btn:active{transform:scale(.97)}
+
+  /* Penanda "sedang bekerja" yang dipakai semua tombol, supaya jeda menunggu
+     jawaban server tidak pernah terasa seperti aplikasi macet. */
+  .spinkecil{
+    width:14px;height:14px;flex:none;border-radius:50%;
+    background:conic-gradient(from 0deg,rgba(255,255,255,0),currentColor);
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 0);
+            mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 0);
+    animation:putar .8s linear infinite;
+  }
+  .btn.sibuk,.iconbtn.sibuk{cursor:progress;opacity:.9}
+  .btn.sibuk:hover{background:rgba(216,180,90,.12)}
+  .btn.primary.sibuk:hover{background:linear-gradient(180deg,rgba(216,180,90,.32),rgba(216,180,90,.16))}
+  .tbl-wrap.sibuk{opacity:.5;pointer-events:none}
+  .tbl-wrap{transition:opacity .2s ease}
+  .muat-baris{display:inline-flex;align-items:center;gap:10px;color:var(--muted)}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:absolute;left:50%;bottom:18px;transform:translate(-50%,14px);z-index:18;
+    display:flex;align-items:center;gap:10px;max-width:min(560px,calc(100% - 28px));
+    padding:9px 10px 9px 13px;border-radius:12px;
+    border:1px solid var(--line);background:rgba(8,28,19,.95);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow);
+    font-size:var(--t-sm);line-height:1.6;color:var(--txt-2);
+    opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;
+  }
+  .toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .toast>.ic{color:var(--gold)}
+  .toast span{flex:1}
+  .toast .btn{margin-top:0;height:26px;padding:0 10px;font-size:11.5px}
+  .toast .iconbtn{width:26px;height:26px}
+
+  /* ---------- home ---------- */
+  .home{position:absolute;inset:0;z-index:10;overflow-y:auto;padding:26px 26px 40px;display:block}
+  .home[hidden]{display:none}
+  .home-in{max-width:1000px;margin:0 auto}
+  .hero{
+    position:relative;overflow:hidden;border-radius:18px;border:1px solid var(--line);
+    background:linear-gradient(150deg,rgba(21,86,58,.55),rgba(6,24,16,.72));
+    box-shadow:var(--shadow);padding:34px 32px;
+    display:grid;grid-template-columns:minmax(0,1.12fr) minmax(210px,.88fr);
+    gap:30px;align-items:center;
+  }
+  .hero .circuit{position:absolute;inset:0;width:100%;height:100%;opacity:.14;pointer-events:none}
+  .hero-tx{position:relative;min-width:0}
+  .logo-wrap{position:relative;width:100%;max-width:330px;justify-self:end}
+  .logo-wrap img,.logo-wrap svg{width:100%;height:auto;display:block;border-radius:12px}
+  .hero h1{
+    position:relative;margin-top:14px;
+    font-family:var(--f-display);font-size:var(--t-display);font-weight:400;
+    line-height:1.04;letter-spacing:-.02em;text-wrap:balance;
+  }
+  .hero h1 em{font-style:italic;color:var(--gold-lt)}
+  .hero p{
+    position:relative;margin:15px 0 0;max-width:46ch;
+    font-size:var(--t-lead);line-height:1.7;color:var(--txt-2);text-wrap:pretty;
+  }
+  .bars{position:relative;display:flex;gap:7px;margin-top:22px}
+  .bars i{height:3px;border-radius:3px;background:rgba(255,255,255,.1)}
+  .bars i:nth-child(1){width:58px;background:linear-gradient(90deg,var(--gold),rgba(216,180,90,.3))}
+  .bars i:nth-child(2){width:30px;background:rgba(216,180,90,.34)}
+  .bars i:nth-child(3){width:16px}
+
+  .sec-title{display:flex;align-items:baseline;gap:14px;margin:34px 0 14px}
+  .sec-title h2{
+    font-family:var(--f-display);font-size:21px;font-weight:400;letter-spacing:-.012em;
+    color:#fff;white-space:nowrap;
+  }
+  .sec-title span{flex:1;height:1px;transform:translateY(-4px);background:linear-gradient(90deg,var(--line),transparent)}
+  .sec-title b{
+    font-family:var(--f-mono);font-size:10.5px;font-weight:400;font-variant-numeric:tabular-nums;
+    color:var(--muted);letter-spacing:.02em;
+  }
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(206px,1fr));gap:10px}
+  .card{
+    display:flex;align-items:center;gap:11px;padding:12px 13px;cursor:pointer;text-align:left;
+    border-radius:12px;border:1px solid var(--line-soft);
+    background:linear-gradient(158deg,rgba(255,255,255,.05),rgba(255,255,255,.014));
+    transition:transform .16s,border-color .16s,box-shadow .16s,background .16s;
+  }
+  .card:hover{transform:translateY(-2px);border-color:rgba(216,180,90,.42);box-shadow:0 12px 26px rgba(0,0,0,.32);background:linear-gradient(158deg,rgba(216,180,90,.13),rgba(255,255,255,.02))}
+  .card-ic{
+    width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:9px;
+    background:rgba(216,180,90,.13);border:1px solid rgba(216,180,90,.28);color:var(--gold-lt);
+  }
+  .card-ic .ic{width:17px;height:17px}
+  .card-tx{
+    min-width:0;font-size:var(--t-ui);font-weight:500;letter-spacing:-.012em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .card:hover .card-tx{color:#fff}
+  .card .go{margin-left:auto;color:var(--muted);transition:color .16s,transform .16s}
+  .card:hover .go{color:var(--gold);transform:translateX(2px)}
+
+  .quote{
+    margin-top:26px;border-radius:14px;border:1px solid var(--line);
+    background:linear-gradient(150deg,rgba(255,255,255,.05),rgba(255,255,255,.012));
+    padding:18px 20px;position:relative;
+  }
+  .quote::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--gold)}
+  .quote p{
+    font-family:var(--f-display);font-size:20px;font-style:italic;font-weight:400;
+    line-height:1.45;letter-spacing:-.01em;color:#fff;text-wrap:pretty;
+  }
+  .quote cite{
+    display:block;margin-top:11px;font-family:var(--f-mono);font-size:10px;font-style:normal;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+  }
+  .home-foot{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-top:26px;padding-top:15px;border-top:1px solid var(--line-soft);
+    font-size:var(--t-sm);color:var(--muted);
+  }
+  .home-foot b{color:var(--txt-2);font-weight:600}
+  .home-foot span:last-child{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em}
+
+  /* ---------- form dasar ---------- */
+  .field{display:block;margin-bottom:14px}
+  /* Markup-nya <label class="field"><span>…</span>, jadi teksnya adalah span pertama —
+     selektor lama (.field label) tidak pernah kena sasaran. */
+  .field>span:first-child{
+    display:block;font-size:var(--t-sm);font-weight:500;letter-spacing:-.005em;
+    color:var(--txt-2);margin-bottom:7px;
+  }
+  .field .wrap{position:relative;display:flex;align-items:center}
+  .field .wrap>.ic{position:absolute;left:11px;color:var(--muted);width:15px;height:15px;pointer-events:none}
+  .inp{
+    width:100%;height:40px;border-radius:9px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line-soft);
+    padding:0 13px;font-size:14px;letter-spacing:-.008em;outline:none;color:var(--txt);
+    transition:border-color .15s,box-shadow .15s,background .15s;
+  }
+  .field .wrap>.ic ~ .inp{padding-left:34px}
+  .inp:focus{background:rgba(255,255,255,.08);border-color:rgba(216,180,90,.55);box-shadow:0 0 0 3px rgba(216,180,90,.12)}
+  .inp::placeholder{color:#6d8b7b}
+  select.inp{
+    appearance:none;cursor:pointer;padding-right:34px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d9c8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 12px center;background-size:12px;
+  }
+  select.inp option{background:#0d3122;color:var(--txt)}
+  .peek{position:absolute;right:6px;width:28px;height:28px;display:grid;place-items:center;border:0;
+    background:none;color:var(--muted);cursor:pointer;border-radius:6px}
+  .peek:hover{color:var(--gold-lt);background:rgba(255,255,255,.06)}
+  .btn.primary{width:100%;justify-content:center;height:42px;margin-top:6px;font-size:var(--t-body);
+    background:linear-gradient(180deg,rgba(216,180,90,.32),rgba(216,180,90,.16));border-color:rgba(216,180,90,.6);color:#fff8e2}
+  .btn.primary:hover{background:linear-gradient(180deg,rgba(216,180,90,.45),rgba(216,180,90,.24))}
+  .btn.danger{border-color:rgba(233,110,98,.45);background:rgba(233,110,98,.14);color:#ffb9b1}
+  .btn.danger:hover{background:rgba(233,110,98,.24)}
+  .btn.sm{height:27px;padding:0 9px;font-size:11.5px;margin-top:0}
+  .alert{
+    display:none;align-items:flex-start;gap:8px;margin-bottom:12px;padding:9px 11px;border-radius:8px;
+    font-size:var(--t-sm);line-height:1.6;border:1px solid rgba(233,110,98,.4);background:rgba(233,110,98,.12);color:#ffc3bc;
+  }
+  .alert.on{display:flex}
+  .alert.ok{border-color:rgba(61,220,139,.4);background:rgba(61,220,139,.12);color:#b6f2d3}
+
+  /* ---------- layar buka ---------- */
+  .boot{
+    position:fixed;inset:0;z-index:150;display:none;place-content:center;justify-items:center;gap:18px;
+    background:radial-gradient(720px 420px at 50% 45%,#12482f,#04100b 72%);
+  }
+  /* Muncul setelah jeda singkat, jadi pembukaan yang cepat tidak berkedip. */
+  body.booting .boot{display:grid;animation:bootIn .3s ease .3s both}
+  body.booting .login,body.booting .shell{display:none}
+  .boot-tx{
+    font-family:var(--f-mono);font-size:var(--t-micro);letter-spacing:.2em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  @keyframes bootIn{from{opacity:0}to{opacity:1}}
+
+  /* ---------- layar login ---------- */
+  .login{
+    position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:20px;overflow:auto;
+    background:
+      radial-gradient(900px 520px at 50% -8%, #175c3c 0%, rgba(23,92,60,0) 60%),
+      linear-gradient(168deg,#0a2417 0%,#061810 55%,#04100b 100%);
+  }
+  body:not(.locked) .login{display:none}
+  body.locked .shell{display:none}
+
+  /* Perpindahan antara aplikasi dan layar login dibuat menyatu, bukan
+     dipadamkan mendadak yang menyisakan kedipan kosong. */
+  body.locked .login{animation:layarMasuk .3s ease both}
+  body.locked .login-card{animation:kartuMasuk .38s cubic-bezier(.2,.8,.2,1) both}
+  body:not(.locked):not(.booting) .shell{animation:layarMasuk .28s ease both}
+  .shell.keluar{opacity:0;pointer-events:none;transition:opacity .2s ease}
+  @keyframes layarMasuk{from{opacity:0}to{opacity:1}}
+  @keyframes kartuMasuk{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+  .login .circuit{position:absolute;inset:0;width:100%;height:100%;opacity:.13;pointer-events:none}
+  .login-card{
+    position:relative;width:min(370px,100%);padding:26px 24px 22px;border-radius:16px;
+    border:1px solid var(--line);background:linear-gradient(155deg,rgba(20,72,48,.72),rgba(6,24,16,.88));
+    box-shadow:var(--shadow);
+  }
+  .login-logo{width:186px;margin:0 auto 22px;display:block}
+  .login-card h1{
+    font-family:var(--f-display);font-size:30px;font-weight:400;
+    text-align:center;letter-spacing:-.02em;line-height:1.1;
+  }
+  .login-card .sub{
+    font-family:var(--f-mono);font-size:var(--t-micro);letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);text-align:center;margin:9px 0 22px;
+  }
+  .login-foot{
+    margin-top:16px;padding-top:13px;border-top:1px solid var(--line-soft);
+    font-size:var(--t-xs);line-height:1.65;color:var(--muted);text-align:center;
+  }
+  .shake{animation:shake .34s cubic-bezier(.36,.07,.19,.97)}
+  @keyframes shake{10%,90%{transform:translateX(-2px)}30%,70%{transform:translateX(4px)}50%{transform:translateX(-4px)}}
+
+  /* ---------- kartu user di sidebar ---------- */
+  .who{display:flex;align-items:center;gap:9px;padding:9px 12px;border-top:1px solid var(--line-soft);flex:none}
+  .ava{
+    width:29px;height:29px;flex:none;border-radius:9px;display:grid;place-items:center;
+    background:linear-gradient(160deg,rgba(216,180,90,.3),rgba(216,180,90,.12));
+    border:1px solid rgba(216,180,90,.45);color:var(--gold-lt);
+    font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:-.02em;
+  }
+  .who-tx{min-width:0;flex:1}
+  .who-tx b{display:block;font-size:var(--t-ui);font-weight:600;letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .who-tx span{display:block;font-size:var(--t-xs);font-weight:500;color:var(--gold);margin-top:1px}
+  .shell.rail .who{justify-content:center;padding:9px 0}
+  .shell.rail .who-tx,.shell.rail .who .iconbtn{display:none}
+
+  /* ---------- tabel ---------- */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line-soft);border-radius:12px;background:rgba(255,255,255,.022)}
+  table.tbl{width:100%;border-collapse:collapse;font-size:var(--t-ui);min-width:560px}
+  .tbl th{
+    text-align:left;font-size:var(--t-micro);font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);padding:11px 14px;border-bottom:1px solid var(--line-soft);white-space:nowrap;
+    background:rgba(255,255,255,.025);position:sticky;top:0;
+  }
+  .tbl td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.045);vertical-align:middle;line-height:1.45}
+  .tbl td b{font-weight:600;letter-spacing:-.012em}
+  .tbl td b+.muted{margin-left:5px}
+  .tbl tr:last-child td{border-bottom:0}
+  .tbl tbody tr:hover{background:rgba(255,255,255,.03)}
+  .tbl .nowrap{white-space:nowrap}
+  .tbl .acts{display:flex;gap:5px;justify-content:flex-end}
+  .tbl .iconbtn{width:27px;height:27px}
+  .muted{color:var(--muted)}
+  .tbl .mono,.mono{font-size:11.5px;color:var(--txt-2)}
+
+  .chip{
+    display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:7px;
+    font-size:var(--t-xs);font-weight:500;letter-spacing:-.004em;
+    border:1px solid var(--line-soft);background:rgba(255,255,255,.05);color:var(--txt-2);white-space:nowrap;
+  }
+  .chip.admin{border-color:rgba(216,180,90,.5);background:rgba(216,180,90,.16);color:var(--gold-lt)}
+  .chip.area{border-color:rgba(61,220,139,.4);background:rgba(61,220,139,.13);color:#9fe9c3}
+  .chip.outlet{border-color:rgba(122,178,255,.35);background:rgba(122,178,255,.12);color:#b6d4ff}
+  .chip.on{border-color:rgba(61,220,139,.4);background:rgba(61,220,139,.13);color:#9fe9c3}
+  .chip.off{border-color:rgba(233,110,98,.4);background:rgba(233,110,98,.12);color:#ffb9b1}
+  .chip.bad{border-color:rgba(233,110,98,.4);background:rgba(233,110,98,.12);color:#ffb9b1}
+
+  .conn{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-bottom:14px;padding:11px 14px;border-radius:10px;
+    border:1px solid var(--line-soft);background:rgba(255,255,255,.03);
+    font-size:var(--t-sm);color:var(--muted);line-height:1.55;
+  }
+  .conn b{
+    font-family:var(--f-mono);font-size:var(--t-micro);font-weight:500;letter-spacing:.1em;
+    text-transform:uppercase;padding:3px 8px;border-radius:6px;white-space:nowrap;
+  }
+  .conn span{flex:1;min-width:200px}
+  .conn.ok{border-color:rgba(61,220,139,.3);background:rgba(61,220,139,.07)}
+  .conn.ok b{background:rgba(61,220,139,.16);color:#9fe9c3}
+  .conn.warn{border-color:rgba(216,180,90,.3);background:rgba(216,180,90,.07)}
+  .conn.warn b{background:rgba(216,180,90,.18);color:var(--gold-lt)}
+  .conn .btn{margin-top:0}
+
+  .page-head{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .page-head h1{font-family:var(--f-display);font-size:var(--t-h1);font-weight:400;letter-spacing:-.018em;line-height:1.1}
+  .page-head p{font-size:var(--t-body);color:var(--muted);margin-top:7px;max-width:54ch;line-height:1.65;text-wrap:pretty}
+  .page-head .sp{flex:1}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .toolbar .inp{height:34px;font-size:var(--t-sm);width:auto}
+  .toolbar .grow{flex:1;min-width:150px}
+  .nores{padding:30px 12px;text-align:center;font-size:var(--t-body);color:var(--muted)}
+  #auCount{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+
+  /* ---------- modal ---------- */
+  .modal{
+    position:fixed;inset:0;z-index:130;display:none;place-items:center;padding:18px;
+    background:rgba(2,10,7,.66);
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  }
+  .modal.on{display:grid;animation:kabut .18s ease both}
+  .modal.tutup{animation:kabutPergi .16s ease both}
+  .modal.tutup .modal-card{animation:kartuPergi .16s ease both}
+  @keyframes kabut{from{opacity:0}to{opacity:1}}
+  @keyframes kabutPergi{to{opacity:0}}
+  @keyframes kartuPergi{to{opacity:0;transform:translateY(6px) scale(.99)}}
+  .modal-card{
+    width:min(400px,100%);max-height:88vh;overflow:auto;padding:20px;border-radius:14px;
+    border:1px solid var(--line);background:linear-gradient(155deg,rgba(19,66,44,.96),rgba(7,26,17,.98));
+    box-shadow:var(--shadow);
+    animation:munculKartu .2s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes munculKartu{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+
+  .modal-card.ask{width:min(372px,100%)}
+  .ask-ic{
+    width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;
+    background:rgba(216,180,90,.14);border:1px solid rgba(216,180,90,.32);color:var(--gold-lt);
+  }
+  .ask-ic.bahaya{background:rgba(233,110,98,.14);border-color:rgba(233,110,98,.35);color:#ffb9b1}
+  .ask-ic .ic{width:17px;height:17px}
+  .ask-tx{font-size:var(--t-body);line-height:1.65;color:var(--txt-2);margin:0 0 18px}
+  .ask-tx b{color:#fff;font-weight:600}
+  .modal-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .modal-head h2{font-family:var(--f-display);font-size:21px;font-weight:400;letter-spacing:-.015em;flex:1}
+  .modal-foot{display:flex;gap:8px;margin-top:6px}
+  .modal-foot .btn{flex:1;justify-content:center;margin-top:0;height:36px}
+
+  /* ---------- mobile ---------- */
+  .scrim{display:none;position:fixed;inset:0;background:rgba(2,10,7,.66);z-index:35}
+  @media (max-width:900px){
+    .shell,.shell.rail{grid-template-columns:1fr}
+    .sidebar{
+      position:fixed;top:0;left:0;bottom:0;width:min(284px,84vw);
+      transform:translateX(-101%);transition:transform .24s cubic-bezier(.2,.8,.2,1);
+      will-change:transform;box-shadow:var(--shadow);
+    }
+    .shell.nav-open .sidebar{transform:none}
+    .shell.nav-open .scrim{display:block}
+    #btnMenu{display:grid}
+    #btnRail{display:none}
+    .shell.rail .brand-txt,.shell.rail .search,.shell.rail .row .lbl,
+    .shell.rail .grp-head span,.shell.rail .grp-head .chev,.shell.rail .live span{display:revert}
+    .shell.rail .row{justify-content:flex-start;padding:0 8px}
+    .shell.rail .nav{padding:6px 12px 20px}
+    .shell.rail .grp-head{justify-content:flex-start;padding:0 6px 7px}
+    .shell.rail .side-foot{justify-content:flex-start;padding:10px 12px}
+    .shell.rail .live{justify-content:flex-start}
+    .shell.rail .brand{flex-direction:row;height:var(--top-h);padding:0 10px 0 12px;gap:8px}
+    .shell.rail .brand-btn{flex:1;justify-content:flex-start;margin-left:-4px;padding:4px 6px 4px 4px}
+    .shell.rail .who{justify-content:flex-start;padding:9px 12px}
+    .shell.rail .who-tx,.shell.rail .who .iconbtn{display:revert}
+    .home{padding:16px 14px 32px}
+    .hero{grid-template-columns:1fr;gap:22px;padding:24px 20px}
+    .hero-tx{order:2}
+    .logo-wrap{order:1;justify-self:start;max-width:260px}
+    .sec-title h2{font-size:19px}
+    .crumb .grp-name,.crumb .sep{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body class="locked booting">
+
+<!-- ===== icon sprite ===== -->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3.5 20h17M7 20v-6.5M12 20V7M17 20v-9.5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.7l2.6 5.3 5.8.85-4.2 4.1 1 5.8-5.2-2.75L6.8 19.75l1-5.8-4.2-4.1 5.8-.85z"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.8" y="5" width="16.4" height="15" rx="2"/><path d="M3.8 9.7h16.4M8.3 3.2v3.4M15.7 3.2v3.4"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 17.5a8.6 8.6 0 1 1 16 0"/><path d="M12 17.5l4.1-5.2"/><circle cx="12" cy="17.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3.5 16.8l5.6-5.6 3.4 3.4L20.5 7"/><path d="M20.5 11.2V7h-4.2"/></symbol>
+  <symbol id="i-ops" viewBox="0 0 24 24"><path d="M4 8h9M17.5 8H20M4 16h3.5M12 16h8M15 6v4M8 14v4"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.6L12 4l8 6.6"/><path d="M6.2 9.4V20h11.6V9.4"/><path d="M9.9 20v-5.2h4.2V20"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6.5 9.5l5.5 5.5 5.5-5.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.1-4.1"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.9 12a7.9 7.9 0 1 1-2.3-5.6"/><path d="M20 4.2v4.4h-4.4"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4.2h5.8V10"/><path d="M19.8 4.2l-8.4 8.4"/><path d="M17.6 14v4.3a1.7 1.7 0 0 1-1.7 1.7H5.7A1.7 1.7 0 0 1 4 18.3V8.1a1.7 1.7 0 0 1 1.7-1.7H10"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9.5V4h5.5M20 14.5V20h-5.5M4 4l6.2 6.2M20 20l-6.2-6.2"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3.8" y="4" width="16.4" height="16" rx="2"/><path d="M10 4v16"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.8" y="5.5" width="16.4" height="13" rx="1.6"/><path d="M3.8 9.7h16.4M3.8 14.3h16.4M8.2 5.5v13M15.8 5.5v13"/></symbol>
+  <symbol id="i-cup" viewBox="0 0 24 24"><path d="M5 7.8h11v5.4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 9.4h1.6a2.3 2.3 0 0 1 0 4.6H16"/><path d="M4.2 20.8h13.6"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M8.8 5.6H7A1.5 1.5 0 0 0 5.5 7.1v12A1.5 1.5 0 0 0 7 20.6h10a1.5 1.5 0 0 0 1.5-1.5v-12A1.5 1.5 0 0 0 17 5.6h-1.8"/><rect x="8.8" y="3.4" width="6.4" height="3.4" rx="1"/><path d="M9.2 13.4l2 2 3.8-4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.6l7 2.5v5.3c0 4.1-2.8 7.2-7 8.4-4.2-1.2-7-4.3-7-8.4V6.1z"/><path d="M9.2 11.9l2.1 2.1 3.8-4"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4.5 7.6h15v2.9a1.5 1.5 0 0 0 0 3v2.9h-15v-2.9a1.5 1.5 0 0 0 0-3z"/><path d="M13.8 7.6v1.8M13.8 11.1v1.8M13.8 14.6v1.8"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4.2h8v4.2a4 4 0 0 1-8 0z"/><path d="M8 5.6H5.4v1.3a3 3 0 0 0 2.8 3M16 5.6h2.6v1.3a3 3 0 0 1-2.8 3"/><path d="M12 12.4v3.4M9.6 19.8h4.8l-.5-4h-3.8z"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 9.6V8.2a1.6 1.6 0 0 0-1.6-1.6H6.2A2.2 2.2 0 0 0 4 8.8v8.6a2.2 2.2 0 0 0 2.2 2.2h11.2A1.6 1.6 0 0 0 19 18v-1.4"/><path d="M20.2 9.6h-3.8a3.2 3.2 0 0 0 0 6.4h3.8z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M12 3.7l7.8 3.9v8.8L12 20.3l-7.8-3.9V7.6z"/><path d="M4.2 7.6l7.8 3.9 7.8-3.9M12 11.5v8.8"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3.8" y="5" width="16.4" height="10.6" rx="1.6"/><path d="M9 20h6M12 15.6V20"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M15.4 20.2v-1.8a3.5 3.5 0 0 0-3.5-3.5H7.2a3.5 3.5 0 0 0-3.5 3.5v1.8"/><circle cx="9.5" cy="8" r="3.2"/><path d="M20.4 20.2v-1.8a3.5 3.5 0 0 0-2.6-3.4M15.6 5a3.2 3.2 0 0 1 0 6.1"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 1.9"/></symbol>
+  <symbol id="i-coins" viewBox="0 0 24 24"><path d="M12 8.4c3.6 0 6.5-1.1 6.5-2.4S15.6 3.5 12 3.5 5.5 4.6 5.5 6s2.9 2.4 6.5 2.4z"/><path d="M18.5 6v5.6c0 1.3-2.9 2.4-6.5 2.4s-6.5-1.1-6.5-2.4V6"/><path d="M18.5 11.6V17c0 1.3-2.9 2.4-6.5 2.4S5.5 18.3 5.5 17v-5.4"/></symbol>
+  <symbol id="i-idcard" viewBox="0 0 24 24"><rect x="3.6" y="5.4" width="16.8" height="13.2" rx="1.8"/><circle cx="9" cy="11" r="1.9"/><path d="M6.4 15.8a3.1 3.1 0 0 1 5.2 0M13.8 10.2h4M13.8 13.6h4"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 20.4v-1.9a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1.9"/><circle cx="12" cy="7.4" r="3.9"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.8" y="10.4" width="14.4" height="9.8" rx="2"/><path d="M8.2 10.4V7.7a3.8 3.8 0 0 1 7.6 0v2.7"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15.6 16.6l4.4-4.6-4.4-4.6"/><path d="M20 12H9.4"/><path d="M12.4 4.6H6.2A1.6 1.6 0 0 0 4.6 6.2v11.6a1.6 1.6 0 0 0 1.6 1.6h6.2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.6v12.8M5.6 12h12.8"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M16.4 4.7l2.9 2.9"/><path d="M4.6 19.4l.9-3.7L15.7 5.5a1.7 1.7 0 0 1 2.4 0l.4.4a1.7 1.7 0 0 1 0 2.4L8.3 18.5z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.8 6.9h14.4M9.4 6.9V5.3a1 1 0 0 1 1-1h3.2a1 1 0 0 1 1 1v1.6"/><path d="M17.3 6.9l-.7 11.9a1.5 1.5 0 0 1-1.5 1.4H8.9a1.5 1.5 0 0 1-1.5-1.4L6.7 6.9"/><path d="M10.3 10.6v5.9M13.7 10.6v5.9"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="15.4" cy="8.6" r="4.1"/><path d="M12.5 11.5L4.6 19.4M7.1 16.9l1.8 1.8M9.6 14.4l1.8 1.8"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 6.4V11h4.6"/><path d="M12 7.8V12l3 1.8"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4.6v9.8M8.2 10.9l3.8 3.8 3.8-3.8M4.8 19.4h14.4"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.8 12S6.2 6.6 12 6.6 21.2 12 21.2 12 17.8 17.4 12 17.4 2.8 12 2.8 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M4.2 4.2l15.6 15.6"/><path d="M9.9 6.1A9.6 9.6 0 0 1 12 5.9c5.8 0 9.2 5.4 9.2 5.4a17 17 0 0 1-3.4 3.9"/><path d="M6.4 8.3A16.7 16.7 0 0 0 2.8 11.3s3.4 5.4 9.2 5.4c.9 0 1.8-.1 2.6-.4"/><path d="M10.3 10.4a2.5 2.5 0 0 0 3.4 3.4"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 4.4v7.2"/><path d="M7.7 7.2a6.7 6.7 0 1 0 8.6 0"/></symbol>
+  <symbol id="i-shield-user" viewBox="0 0 24 24"><path d="M12 3.6l7 2.5v5.3c0 4.1-2.8 7.2-7 8.4-4.2-1.2-7-4.3-7-8.4V6.1z"/><circle cx="12" cy="10.2" r="2"/><path d="M8.9 15.4a3.7 3.7 0 0 1 6.2 0"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13.2 6.6L18.6 12l-5.4 5.4"/></symbol>
+</svg>
+
+<!-- ===== logo (dipakai ulang di sidebar & home) ===== -->
+<template id="tpl-logo">
+  <svg viewBox="0 0 340 190" role="img" aria-label="SIGAP — sistem inventory gudang andal dan persisi">
+    <defs>
+      <linearGradient id="lgGreen" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#17603f"/><stop offset=".55" stop-color="#0e3b28"/><stop offset="1" stop-color="#082217"/>
+      </linearGradient>
+      <linearGradient id="lgGold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8eec2"/><stop offset=".32" stop-color="#dcb85e"/>
+        <stop offset=".58" stop-color="#a87c22"/><stop offset=".78" stop-color="#e6cd85"/><stop offset="1" stop-color="#f6e7b4"/>
+      </linearGradient>
+    </defs>
+    <rect x="1.5" y="1.5" width="337" height="187" rx="11" fill="url(#lgGreen)" stroke="url(#lgGold)" stroke-width="2.5"/>
+    <g fill="url(#lgGold)">
+      <path d="M118 24l3.4 7.6 7.6 3.4-7.6 3.4-3.4 7.6-3.4-7.6-7.6-3.4 7.6-3.4z" opacity=".85"/>
+      <path d="M232 40l2.4 5.4 5.4 2.4-5.4 2.4-2.4 5.4-2.4-5.4-5.4-2.4 5.4-2.4z" opacity=".6"/>
+    </g>
+    <text x="170" y="98" text-anchor="middle" font-family="Georgia,'Times New Roman',serif"
+          font-size="76" font-weight="700" letter-spacing="4" fill="url(#lgGold)">SIGAP</text>
+    <g transform="translate(176,68)" id="reel">
+      <circle r="20" fill="#0d3826" stroke="url(#lgGold)" stroke-width="3.6"/>
+      <g fill="url(#lgGold)">
+        <circle r="4.1" cy="-10.6"/><circle r="4.1" cx="10.1" cy="-3.3"/><circle r="4.1" cx="6.2" cy="8.6"/>
+        <circle r="4.1" cx="-6.2" cy="8.6"/><circle r="4.1" cx="-10.1" cy="-3.3"/><circle r="4.6"/>
+      </g>
+    </g>
+    <text x="170" y="143" text-anchor="middle" font-family="Inter,system-ui,sans-serif"
+          font-size="24" font-weight="800" textLength="272" lengthAdjust="spacingAndGlyphs">
+      <tspan fill="url(#lgGold)"></tspan><tspan fill="#ffffff">DATA INTELLIGENCE INVENTORY</tspan>
+    </text>
+    <path d="M62 158h60M218 158h60" stroke="url(#lgGold)" stroke-width="1.2" opacity=".75"/>
+    <text x="170" y="162" text-anchor="middle" font-family="Inter,system-ui,sans-serif"
+          font-size="10.5" font-weight="600" textLength="196" lengthAdjust="spacingAndGlyphs"
+          fill="url(#lgGold)">sistem inventory gudang andal dan persisi</text>
+  </svg>
+</template>
+
+<!-- ===================== LAYAR BUKA ===================== -->
+<div class="boot" id="boot" aria-hidden="true">
+  <span class="reel" id="bootMark"></span>
+  <span class="boot-tx">Menyiapkan SIGAP…</span>
+</div>
+
+<!-- ===================== LOGIN ===================== -->
+<div class="login" id="login">
+  <svg class="circuit" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g stroke="#d8b45a" stroke-width="1" fill="none">
+      <path d="M0 70h130l30 30h150M600 50H470l-28 28H300M0 235h95l40-40h150M600 250H460l-34-34H295"/>
+      <path d="M300 0v78M300 300v-64M150 300v-60l40-40"/>
+    </g>
+    <g fill="#d8b45a">
+      <circle cx="130" cy="70" r="3"/><circle cx="310" cy="100" r="3"/><circle cx="470" cy="50" r="3"/>
+      <circle cx="135" cy="195" r="3"/><circle cx="426" cy="216" r="3"/><circle cx="190" cy="240" r="3"/>
+    </g>
+  </svg>
+
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <span class="login-logo" id="loginLogo"></span>
+    <h1>Masuk ke SIGAP</h1>
+    <p class="sub">sistem inventory gudang andal dan persisi</p>
+
+    <div class="alert" id="loginErr"><svg class="ic"><use href="#i-shield-user"/></svg><span id="loginErrTx"></span></div>
+
+    <label class="field">
+      <span>Username</span>
+      <span class="wrap">
+        <svg class="ic"><use href="#i-user"/></svg>
+        <input class="inp" id="lgUser" name="username" autocomplete="username" spellcheck="false" placeholder="username" required>
+      </span>
+    </label>
+
+    <label class="field">
+      <span>Password</span>
+      <span class="wrap">
+        <svg class="ic"><use href="#i-lock"/></svg>
+        <input class="inp" id="lgPass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+        <button class="peek" id="lgPeek" type="button" aria-label="Tampilkan password"><svg class="ic"><use href="#i-eye"/></svg></button>
+      </span>
+    </label>
+
+    <button class="btn primary" id="lgSubmit" type="submit">
+      <svg class="ic"><use href="#i-logout"/></svg> Masuk
+    </button>
+
+    <p class="login-foot">Sesi tetap aktif sampai Anda menekan keluar —<br>tidak ada batas waktu otomatis.</p>
+  </form>
+</div>
+
+<div class="shell" id="shell">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <button class="brand-btn" id="brandHome" type="button" title="Kembali ke Beranda" aria-label="Kembali ke Beranda">
+        <span class="brand-mark" id="brandMark"></span>
+        <span class="brand-txt">
+          <b><i>SIGAP</i></b>
+          <span>Inventory Analytics</span>
+        </span>
+      </button>
+      <button class="iconbtn" id="btnRail" type="button" title="Ciutkan sidebar" aria-label="Ciutkan sidebar">
+        <svg class="ic"><use href="#i-panel"/></svg>
+      </button>
+    </div>
+
+    <div class="search">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input id="q" type="search" placeholder="Cari dashboard…" autocomplete="off" spellcheck="false" aria-label="Cari dashboard">
+      <kbd>Ctrl K</kbd>
+    </div>
+
+    <nav class="nav" id="nav" aria-label="Daftar dashboard">
+      <button class="row active" id="rowHome" type="button" data-home>
+        <svg class="ic"><use href="#i-home"/></svg><span class="lbl">Beranda</span>
+      </button>
+      <div id="groups"></div>
+      <p class="empty">Dashboard tidak ditemukan.</p>
+    </nav>
+
+    <div class="who">
+      <span class="ava" id="whoAva">–</span>
+      <span class="who-tx"><b id="whoName">–</b><span id="whoRole">–</span></span>
+      <button class="iconbtn" id="btnLogout" type="button" title="Keluar" aria-label="Keluar">
+        <svg class="ic"><use href="#i-logout"/></svg>
+      </button>
+    </div>
+
+    <div class="side-foot">
+      <span class="live"><i></i><span>Live · <span id="cnt">0</span> dashboard</span></span>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+    <header class="topbar">
+      <button class="iconbtn" id="btnMenu" type="button" title="Menu" aria-label="Buka menu">
+        <svg class="ic"><use href="#i-menu"/></svg>
+      </button>
+      <div class="crumb">
+        <span class="grp-name" id="cGroup">Beranda</span>
+        <span class="sep">/</span>
+        <span class="title" id="cTitle">SIGAP</span>
+      </div>
+      <div class="top-actions">
+        <button class="iconbtn" id="btnReload" type="button" title="Muat ulang" aria-label="Muat ulang">
+          <svg class="ic"><use href="#i-refresh"/></svg>
+        </button>
+        <button class="iconbtn" id="btnOpen" type="button" title="Buka di tab baru" aria-label="Buka di tab baru">
+          <svg class="ic"><use href="#i-external"/></svg>
+        </button>
+        <button class="iconbtn" id="btnFull" type="button" title="Layar penuh" aria-label="Layar penuh">
+          <svg class="ic"><use href="#i-expand"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="stage" id="stage">
+      <!-- HOME -->
+      <section class="home" id="home">
+        <div class="home-in">
+          <div class="hero">
+            <svg class="circuit" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <g stroke="#d8b45a" stroke-width="1" fill="none">
+                <path d="M0 60h120l30 30h140M600 40H470l-28 28H300M0 240h90l40-40h150M600 250H460l-34-34H290"/>
+                <path d="M300 0v70M300 300v-70M150 300v-60l40-40"/>
+              </g>
+              <g fill="#d8b45a">
+                <circle cx="120" cy="60" r="3"/><circle cx="290" cy="90" r="3"/><circle cx="470" cy="40" r="3"/>
+                <circle cx="300" cy="68" r="3"/><circle cx="130" cy="200" r="3"/><circle cx="426" cy="216" r="3"/>
+                <circle cx="300" cy="70" r="3"/><circle cx="190" cy="240" r="3"/>
+              </g>
+            </svg>
+            <div class="hero-tx">
+              <span class="eyebrow">Ikhtisar</span>
+              <h1>Cara baru bekerja: lebih cepat, lebih akurat, <em>berbasis data</em>.</h1>
+              <p>SIGAP: fokus pada realitas fisik barang: berapa stok yang tersedia, di mana barang berada, kapan expired, kapan masuk/keluar, dan bagaimana hasil stock opname.
+                Aktivitas Inventory Outlet: lapisan analitik yang memanfaatkan laporan transaksi DG21 untuk membantu membaca kondisi inventory di level outlet..</p>
+              <div class="bars"><i></i><i></i><i></i></div>
+            </div>
+            <div class="logo-wrap">
+              <img id="logoImg" alt="SIGAP" style="display:none">
+              <span id="logoSvg"></span>
+            </div>
+          </div>
+
+          <div id="homeGroups"></div>
+
+          <div class="quote">
+            <p>“Dengan sistem ini, kita tidak hanya bekerja lebih keras, tapi juga lebih cerdas.”</p>
+            <cite>SIGAP</cite>
+          </div>
+
+          <div class="home-foot">
+            <span><b>Terima kasih</b> — selamat menganalisa.</span>
+            <span>Dev_AP</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- MASTER USER -->
+      <section class="home" id="master" hidden>
+        <div class="home-in">
+          <div class="page-head">
+            <div>
+              <h1>Master User</h1>
+              <p>Kelola akun dan hak akses. Role menentukan menu apa saja yang tampil untuk user tersebut.</p>
+            </div>
+            <span class="sp"></span>
+            <button class="btn" id="btnAddUser" type="button">
+              <svg class="ic"><use href="#i-plus"/></svg> Tambah User
+            </button>
+          </div>
+
+          <div class="conn" id="conn"></div>
+
+          <div class="alert" id="seedWarn">
+            <svg class="ic"><use href="#i-shield-user"/></svg>
+            <span>Akun <b>admin</b> masih memakai password bawaan. Ganti sekarang lewat tombol kunci di barisnya.</span>
+          </div>
+
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr>
+                <th>Nama</th><th>Username</th><th>Role</th><th>Status</th><th>Login terakhir</th><th></th>
+              </tr></thead>
+              <tbody id="userRows"></tbody>
+            </table>
+          </div>
+          <p class="nores" id="noUser" style="display:none">Belum ada user.</p>
+        </div>
+      </section>
+
+      <!-- AUDIT LOG -->
+      <section class="home" id="audit" hidden>
+        <div class="home-in">
+          <div class="page-head">
+            <div>
+              <h1>Audit Log</h1>
+              <p>Catatan aktivitas: login, keluar, dashboard yang dibuka, dan perubahan data user.</p>
+            </div>
+            <span class="sp"></span>
+            <button class="btn" id="btnCsv" type="button">
+              <svg class="ic"><use href="#i-download"/></svg> Unduh CSV
+            </button>
+            <button class="btn ghost" id="btnClearLog" type="button">
+              <svg class="ic"><use href="#i-trash"/></svg> Kosongkan
+            </button>
+          </div>
+
+          <div class="toolbar">
+            <input class="inp grow" id="auQ" placeholder="Cari user, aksi, atau detail…" spellcheck="false">
+            <select class="inp" id="auAksi"><option value="">Semua aksi</option></select>
+            <span class="muted" style="font-size:11.5px" id="auCount"></span>
+          </div>
+
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>Waktu</th><th>User</th><th>Role</th><th>Aksi</th><th>Detail</th></tr></thead>
+              <tbody id="auditRows"></tbody>
+            </table>
+          </div>
+          <p class="nores" id="noAudit" style="display:none">Belum ada aktivitas tercatat.</p>
+        </div>
+      </section>
+
+      <!-- TIP sekali-pakai: jalan keluar kalau frame ditolak sumbernya -->
+      <div class="toast" id="toast" role="status">
+        <svg class="ic"><use href="#i-external"/></svg>
+        <span id="toastTx"></span>
+        <button class="btn" id="toastOpen" type="button">Buka</button>
+        <button class="iconbtn" id="toastClose" type="button" aria-label="Tutup tip">
+          <svg class="ic"><use href="#i-close"/></svg>
+        </button>
+      </div>
+
+      <div class="prog" id="prog" aria-hidden="true"></div>
+
+      <!-- LOADER -->
+      <div class="loader hide" id="loader">
+        <div class="reel" id="ldMark"></div>
+        <p><b id="ldTitle">Memuat…</b><span id="ldSub">Menyiapkan dashboard</span></p>
+        <div class="hint">
+          <span id="hintTxt"></span>
+          <div class="btns">
+            <button class="btn" id="btnHintOpen" type="button">
+              <svg class="ic"><use href="#i-external"/></svg> Buka di tab baru
+            </button>
+            <button class="btn ghost" id="btnHintRetry" type="button">
+              <svg class="ic"><use href="#i-refresh"/></svg> Coba lagi
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===================== DIALOG KONFIRMASI ===================== -->
+<div class="modal" id="ask">
+  <div class="modal-card ask">
+    <div class="modal-head">
+      <span class="ask-ic" id="askIcWrap"><svg class="ic" id="askIc"><use href="#i-shield-user"/></svg></span>
+      <h2 id="askTitle">Konfirmasi</h2>
+    </div>
+    <p class="ask-tx" id="askMsg"></p>
+    <div class="modal-foot">
+      <button class="btn ghost" id="askNo" type="button">Batal</button>
+      <button class="btn primary" id="askYes" type="button">Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL USER ===================== -->
+<div class="modal" id="modal">
+  <form class="modal-card" id="userForm">
+    <div class="modal-head">
+      <svg class="ic" style="width:18px;height:18px;color:var(--gold)"><use href="#i-user"/></svg>
+      <h2 id="mdTitle">Tambah User</h2>
+      <button class="iconbtn" id="mdClose" type="button" aria-label="Tutup"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+
+    <div class="alert" id="mdErr"><svg class="ic"><use href="#i-shield-user"/></svg><span id="mdErrTx"></span></div>
+
+    <label class="field"><span>Nama lengkap</span>
+      <span class="wrap"><input class="inp" id="mdNama" placeholder="cth. Budi Santoso" required></span>
+    </label>
+    <label class="field"><span>Username</span>
+      <span class="wrap"><input class="inp" id="mdUser" placeholder="cth. budi" spellcheck="false" required></span>
+    </label>
+    <label class="field" id="mdPassField"><span id="mdPassLabel">Password</span>
+      <span class="wrap">
+        <input class="inp" id="mdPass" type="password" placeholder="minimal 5 karakter">
+        <button class="peek" id="mdPeek" type="button" aria-label="Tampilkan password"><svg class="ic"><use href="#i-eye"/></svg></button>
+      </span>
+    </label>
+    <label class="field"><span>Role</span>
+      <span class="wrap"><select class="inp" id="mdRole">
+        <option value="admin">Admin — akses penuh</option>
+        <option value="area">Area — semua dashboard, tanpa menu sistem</option>
+        <option value="outlet">Outlet — dashboard terbatas</option>
+      </select></span>
+    </label>
+    <label class="field"><span>Status</span>
+      <span class="wrap"><select class="inp" id="mdAktif">
+        <option value="1">Aktif</option>
+        <option value="0">Nonaktif</option>
+      </select></span>
+    </label>
+
+    <div class="modal-foot">
+      <button class="btn ghost" id="mdCancel" type="button">Batal</button>
+      <button class="btn primary" id="mdSimpan" type="submit" style="margin-top:0">Simpan</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ===========================================================
+     KONFIGURASI — tambah / ubah menu cukup di sini.
+     icon: chart | star | target | calendar | gauge | trend | ops
+     =========================================================== */
+  var NAV = [
+    {
+      id: "1201",
+      title: "CAFE",
+      icon: "trend",
+      items: [
+        { id:"sigap-cafe",       label:"SIGAP CAFE",         icon:"chart",    url:"https://system21-os.github.io/SIGAP-CAFE/" },
+        { id:"aktivitas-cafe",   label:"Aktivitas Cafe", icon:"trophy",   url:"https://script.google.com/macros/s/AKfycbzsSLnGwkyvX2TPjM86Lz0rnRui3qfkYUGRhff8r3vTcm3TKV2VCxyMwTZxDysYFinQyw/exec" },
+        { id:"convertion", label:"Convertion",   icon:"target",   url:"https://script.google.com/macros/s/AKfycbwux3IKpGGBHPWAntLicINiFGkCU21fvrXMld7lH6KlhSwdbIXMRPrIl-sh6E6L83VS/exec" }
+      ]
+    },
+    {
+      id: "1202",
+      title: "PREMIERE",
+      icon: "ops",
+      items: [
+        { id:"sigap-premiere",       label:"SIGAP PREMIERE",         icon:"chart",    url:"https://system21-os.github.io/Sigap-Pemiere/" },
+        { id:"aktivitas-premiere",   label:"Aktivitas Premiere", icon:"trophy",   url:"https://script.google.com/macros/s/AKfycbzwgk6Epb0eW2XL7JT8yofeGpfPY0qexJoUtvOHJM5BdgJmG64PjE5643-FwM1lJAXH/exec" },
+        { id:"convertion", label:"Convertion",   icon:"target",   url:"https://script.google.com/macros/s/AKfycbzFwnHlR-3kD2ys95m7nObqhV-9upSQJccLoPntAkIE1EriePGA7ybDiI3qXzqwqAOhlA/exec" }
+      ]
+    },
+    {
+      id: "finance",
+      title: "Financial",
+      icon: "coins",
+      items: [
+        { id:"cash-cost",        label:"Cash N Cost",      icon:"wallet",  url:"https://script.google.com/macros/s/AKfycbyoX6GUPwIK-4z6blqH5i5BBPOofCm4TcqzWEtOEIzefoL3OG5WsuO6iCd-3HDiFJvz/exec" },
+        { id:"inventory-report", label:"Inventory Report", icon:"box",     url:"https://script.google.com/macros/s/AKfycbxgYM1IJNxIsH2jYKP2VKKdn82JdQiUq67sBN9AfTMvLJ0aItjv_z6l7eq1a4V3rGtq7w/exec" },
+        { id:"cinema-report",    label:"Cinema Report",    icon:"monitor", url:"https://script.google.com/macros/s/AKfycbxbnWm8ZJ9BEC8PqoM3cp-VvoAJGPgLOK8WTdrWG0G5F_oT40NfPYTHFPbMlGJmcAB8/exec" }
+      ]
+    },
+    {
+      id: "hc",
+      title: "Human Capital",
+      icon: "users",
+      items: [
+        { id:"portal-hc",       label:"Portal HC",        icon:"idcard", url:"https://script.google.com/macros/s/AKfycbzERyVpoGMdc91ZKFe4RE2-XRDdij9lYal44W_EBmcusePtOv9h6Ifgxm-p11cnQCMcmA/exec" },
+        { id:"lembur-dashboard",label:"Lembur Dashboard", icon:"clock",  url:"https://script.google.com/macros/s/AKfycbyxHe16P8zWJ3SWBIF3AVeBiKVPjv4lFc_peL-_qk3O1q6Ov9Sf2ZKIiiJWTeKVjeT5_w/exec" }
+      ]
+    }
+  ];
+
+  /* ===========================================================
+     HAK AKSES
+     deny : id dashboard yang disembunyikan untuk role tersebut
+     sys  : halaman sistem yang boleh dibuka
+     =========================================================== */
+  var ROLES = {
+    admin:  { label:"Admin",  desc:"Akses penuh",
+              deny:[], sys:["master","audit"] },
+    area:   { label:"Area",   desc:"Semua dashboard, tanpa menu sistem",
+              deny:[], sys:[] },
+    outlet: { label:"Outlet", desc:"Dashboard terbatas",
+              deny:["best-cashier","kpi-analyst","google-review","inventory-report"], sys:[] }
+  };
+
+  var SYS = {
+    master: { hash:"master-user", label:"Master User", icon:"users"   },
+    audit:  { hash:"audit-log",   label:"Audit Log",   icon:"history" }
+  };
+
+  var SEED_USER = "admin", SEED_PW = "admin123", AUDIT_MAX = 500;
+
+  /* ===========================================================
+     PENYIMPANAN
+     Kosongkan API.url  -> data user & audit tersimpan di localStorage,
+                           artinya hanya ada di browser ini saja.
+     Isi API.url        -> semuanya tersimpan permanen di Google Sheet,
+                           jadi user yang dibuat tetap ada di browser dan
+                           perangkat mana pun.
+
+     Cukup isi url-nya saja. Biarkan key kosong: pemeriksaan kunci mati secara
+     bawaan di Apps Script, dan kunci semacam itu memang tetap terbaca di kode
+     sumber halaman sehingga bukan pengaman sungguhan. Yang menjaga data adalah
+     password dan token sesi yang tidak pernah keluar dari server.
+     =========================================================== */
+  var API = {
+    url: "https://script.google.com/macros/s/AKfycbxiZOpLa-Yitvu_Es9GwtrhLM4d0y65rbqD3P1H5_aSZ2qRwu8LQiFw4aLlKBhzZNx0/exec",
+    key: ""
+  };
+
+  /* ---------- util ---------- */
+  var $  = function(s,r){ return (r||document).querySelector(s); };
+  var el = function(t,c,h){ var n=document.createElement(t); if(c)n.className=c; if(h!=null)n.innerHTML=h; return n; };
+  var ico = function(name,cls){ return '<svg class="ic '+(cls||'')+'"><use href="#i-'+name+'"/></svg>'; };
+  var LS = {
+    get:function(k,d){ try{ var v=localStorage.getItem("sigap."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } },
+    set:function(k,v){ try{ localStorage.setItem("sigap."+k,JSON.stringify(v)); }catch(e){} }
+  };
+
+  var byId = {};
+  NAV.forEach(function(g){ g.items.forEach(function(it){ it.groupTitle = g.title; byId[it.id] = it; }); });
+  var TOTAL = Object.keys(byId).length;
+
+  var shell=$("#shell"), stage=$("#stage"), home=$("#home"), loader=$("#loader"),
+      nav=$("#nav"), groupsBox=$("#groups"), homeGroups=$("#homeGroups"),
+      cGroup=$("#cGroup"), cTitle=$("#cTitle"), rowHome=$("#rowHome"), qInput=$("#q");
+
+  var frames  = {};     // id -> iframe
+  var order   = [];     // urutan pemakaian, terbaru di belakang (untuk LRU)
+  var current = null;   // id dashboard aktif, null = beranda
+  var slowTimer = null;
+  var railTimer = null;
+
+  var MAX_LIVE  = 8;    // batas dashboard yang ditahan di memori
+  var MAX_WARM  = 2;    // batas pramuat yang jalan bersamaan
+
+  var idle = window.requestIdleCallback
+    ? function(fn){ requestIdleCallback(fn, { timeout:2500 }); }
+    : function(fn){ setTimeout(fn, 1200); };
+
+  var TXT_SLOW = "Dashboard butuh waktu lebih lama dari biasanya. Jika halaman tetap kosong, buka langsung di tab baru.";
+  var TXT_TIP  = "Kalau isi dashboard tampil kosong, sumbernya menolak dimuat di dalam frame — buka saja di tab baru.";
+
+  var me = null;          // user yang sedang login
+  var currentSys = null;  // "master" | "audit" | null
+
+  // Saat aplikasi disajikan Apps Script, halamannya berada di dalam iframe
+  // tersandbox. Beberapa browser menolak mengubah alamat dari sana, dan
+  // penolakan itu tidak boleh sampai menghentikan navigasi.
+  function setHash(h){
+    try{ history.replaceState(null, "", h); }catch(e){}
+  }
+  function bacaHash(){
+    try{ return location.hash.replace(/^#\/?/, ""); }catch(e){ return ""; }
+  }
+
+  function roleDef(){ return (me && ROLES[me.role]) || { label:"–", deny:[], sys:[] }; }
+  function allowed(id){ return !!me && !!byId[id] && roleDef().deny.indexOf(id) < 0; }
+  function canSys(name){ return !!me && roleDef().sys.indexOf(name) > -1; }
+
+  /* ---------- logo: pakai assets/logo.png bila tersedia ---------- */
+  (function initLogo(){
+    // Logo dipakai di tiga tempat sekaligus. Id gradiennya harus unik per salinan —
+    // kalau kembar, url(#lgGold) akan menunjuk ke salinan pertama di dokumen, dan
+    // salinan itu bisa saja sedang tersembunyi sehingga logo lain ikut kosong.
+    var tplHtml = $("#tpl-logo").innerHTML;
+    function logoSvg(tanda){
+      var wrap = document.createElement("div");
+      wrap.innerHTML = tplHtml.split("lgGreen").join("lgGreen"+tanda)
+                              .split("lgGold").join("lgGold"+tanda);
+      return wrap.querySelector("svg");
+    }
+
+    $("#logoSvg").appendChild(logoSvg("A"));
+    $("#loginLogo").appendChild(logoSvg("B"));
+
+    function gelendong(tanda){
+      var m = logoSvg(tanda);
+      m.setAttribute("viewBox","152 44 48 48");             // crop ke film reel saja
+      m.removeAttribute("role"); m.setAttribute("aria-hidden","true");
+      Array.prototype.forEach.call(m.querySelectorAll("rect,text,path"), function(n){ n.remove(); });
+      return m;
+    }
+    $("#brandMark").appendChild(gelendong("C"));
+    $("#ldMark").appendChild(gelendong("D"));
+    $("#bootMark").appendChild(gelendong("E"));
+
+    var img = $("#logoImg"), probe = new Image();
+    probe.onload = function(){
+      img.src = "assets/logo.png";
+      img.style.display = "block";
+      $("#logoSvg").style.display = "none";
+    };
+    probe.src = "assets/logo.png";
+  })();
+
+  /* ---------- pramuat saat disentuh kursor ---------- */
+  var hoverTimer = null;
+  function prefetchOn(node, id){
+    node.addEventListener("pointerenter", function(){
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(function(){ warm(id); }, 140);
+    });
+    node.addEventListener("pointerleave", function(){ clearTimeout(hoverTimer); });
+    node.addEventListener("pointerdown", function(){ warm(id); });
+  }
+
+  /* ---------- render sidebar ---------- */
+  var collapsedMap = LS.get("groups", {});
+
+  function grupBaru(id, title, icon){
+    var grp = el("div","grp");
+    grp.dataset.group = id;
+    if(collapsedMap[id]) grp.classList.add("collapsed");
+    var head = el("button","grp-head", ico(icon)+"<span>"+title+"</span>"+ico("chev","chev"));
+    head.type = "button";
+    head.title = title;
+    head.setAttribute("aria-expanded", String(!collapsedMap[id]));
+    head.addEventListener("click", function(){
+      grp.classList.toggle("collapsed");
+      var col = grp.classList.contains("collapsed");
+      head.setAttribute("aria-expanded", String(!col));
+      collapsedMap[id] = col; LS.set("groups", collapsedMap);
+    });
+    grp.appendChild(head);
+    return grp;
+  }
+
+  function renderSidebar(){
+    groupsBox.innerHTML = "";
+    var tampil = 0;
+
+    NAV.forEach(function(g){
+    var vis = g.items.filter(function(it){ return allowed(it.id); });
+    if(!vis.length) return;
+    tampil += vis.length;
+    var grp = grupBaru(g.id, g.title, g.icon);
+
+    var list = el("div","grp-items");
+    vis.forEach(function(it){
+      var row = el("button","row", ico(it.icon)+'<span class="lbl">'+it.label+"</span><span class='dot'></span>");
+      row.type="button"; row.dataset.id=it.id; row.title=it.label;
+      row.addEventListener("click", function(){ open(it.id); });
+      prefetchOn(row, it.id);
+      list.appendChild(row);
+    });
+
+    grp.appendChild(list); groupsBox.appendChild(grp);
+    });
+
+    // grup Sistem hanya untuk role yang berhak
+    var sysList = roleDef().sys;
+    if(sysList.length){
+      var gs = grupBaru("sys", "Sistem", "shield-user");
+      var ls = el("div","grp-items");
+      sysList.forEach(function(name){
+        var d = SYS[name];
+        var row = el("button","row", ico(d.icon)+'<span class="lbl">'+d.label+"</span>");
+        row.type="button"; row.dataset.sys = name; row.title = d.label;
+        row.addEventListener("click", function(){ openSys(name); });
+        ls.appendChild(row);
+      });
+      gs.appendChild(ls); groupsBox.appendChild(gs);
+    }
+
+    $("#cnt").textContent = tampil;
+  }
+
+  rowHome.addEventListener("click", function(){ showHome(); });
+  $("#brandHome").addEventListener("click", function(){ showHome(); });
+
+  /* ---------- render beranda ---------- */
+  function renderHomeCards(){
+    homeGroups.innerHTML = "";
+    NAV.forEach(function(g){
+    var vis = g.items.filter(function(it){ return allowed(it.id); });
+    if(!vis.length) return;
+    var head = el("div","sec-title",
+      "<h2>"+g.title+"</h2><span></span><b>"+vis.length+" dashboard</b>");
+    var cards = el("div","cards");
+    vis.forEach(function(it){
+      var c = el("button","card",
+        '<span class="card-ic">'+ico(it.icon)+'</span>'+
+        '<span class="card-tx">'+it.label+'</span>'+
+        ico("arrow","go"));
+      c.type="button";
+      c.addEventListener("click", function(){ open(it.id); });
+      prefetchOn(c, it.id);
+      cards.appendChild(c);
+    });
+    homeGroups.appendChild(head); homeGroups.appendChild(cards);
+    });
+  }
+
+  /* ---------- loader ---------- */
+  // Garis kemajuan punya dua sumber: dashboard yang sedang dimuat, dan
+  // permintaan ke server. Keduanya dihitung terpisah supaya yang satu tidak
+  // memadamkan tanda milik yang lain.
+  var prog = $("#prog"), progMuat = false, progApi = 0;
+  function progPerbarui(){ prog.classList.toggle("on", progMuat || progApi > 0); }
+  function progOn(){ progMuat = true; progPerbarui(); }
+  function progOff(){ progMuat = false; progPerbarui(); }
+
+  // Tombol menampilkan cincin berputar selama menunggu, lalu pulih seperti semula.
+  function sibuk(el, nyala, teks){
+    if(!el) return;
+    if(nyala){
+      if(el.dataset.labelAsli == null) el.dataset.labelAsli = el.innerHTML;
+      el.disabled = true;
+      el.classList.add("sibuk");
+      el.innerHTML = '<span class="spinkecil"></span>' + (teks ? "<span>"+teks+"</span>" : "");
+    }else{
+      el.disabled = false;
+      el.classList.remove("sibuk");
+      if(el.dataset.labelAsli != null){
+        el.innerHTML = el.dataset.labelAsli;
+        delete el.dataset.labelAsli;
+      }
+    }
+  }
+
+  function showLoader(item){
+    progOn();
+    $("#ldTitle").textContent = item.label;
+    $("#ldSub").textContent   = item.groupTitle;
+    $("#hintTxt").textContent = TXT_SLOW;
+    loader.classList.remove("hide","slow");
+    clearTimeout(slowTimer);
+    slowTimer = setTimeout(function(){ loader.classList.add("slow"); }, 12000);
+  }
+  function hideLoader(){
+    clearTimeout(slowTimer);
+    progOff();
+    loader.classList.add("hide");
+    loader.classList.remove("slow");
+  }
+
+  // Catatan: frame yang ditolak sumbernya (X-Frame-Options / CSP frame-ancestors)
+  // tetap memicu event "load" dan aksesnya tetap melempar SecurityError persis
+  // seperti halaman lintas-origin yang berhasil dimuat — jadi browser tidak
+  // menyediakan cara untuk mendeteksinya. Sebagai gantinya: tip sekali-pakai di
+  // bawah + tombol "Buka di tab baru" yang selalu tersedia di topbar.
+  var toast = $("#toast"), tipTimer = null;
+  function toastMsg(html, withOpen, ms){
+    $("#toastTx").innerHTML = html;
+    $("#toastOpen").style.display = withOpen ? "" : "none";
+    toast.classList.add("on");
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(hideTip, ms || 6000);
+  }
+  function showTip(){
+    if(LS.get("tip", false)) return;
+    LS.set("tip", true);
+    toastMsg(TXT_TIP, true, 9000);
+  }
+  function hideTip(){ clearTimeout(tipTimer); toast.classList.remove("on"); }
+
+  /* ---------- cache dashboard ----------
+     Dashboard yang sudah dibuka disimpan hidup supaya pindah menu terasa instan.
+     Jumlahnya dibatasi MAX_LIVE, yang paling lama tidak dipakai dilepas dari memori. */
+  function touch(id){
+    var i = order.indexOf(id);
+    if(i > -1) order.splice(i,1);
+    order.push(id);
+
+    while(order.length > MAX_LIVE){
+      var vi = -1;
+      for(var k = 0; k < order.length; k++){ if(order[k] !== current){ vi = k; break; } }
+      if(vi < 0) break;                       // sisanya cuma yang sedang aktif
+      var victim = order.splice(vi,1)[0], f = frames[victim];
+      if(f) f.remove();
+      delete frames[victim];
+      var row = nav.querySelector('.row[data-id="'+victim+'"]');
+      if(row) row.classList.remove("loaded");
+    }
+  }
+
+  function loadingCount(){
+    var n = 0;
+    for(var k in frames){ if(frames[k] && !frames[k].dataset.loaded) n++; }
+    return n;
+  }
+
+  // Pramuat diam-diam: dipanggil saat kursor menyentuh menu, jadi begitu diklik
+  // dashboard-nya sudah (hampir) selesai dimuat.
+  function warm(id){
+    var item = byId[id];
+    if(!item || frames[id] || loadingCount() >= MAX_WARM) return;
+    ensureFrame(item);
+    touch(id);
+  }
+
+  /* ---------- iframe ---------- */
+  function ensureFrame(item){
+    if(frames[item.id]) return frames[item.id];
+    var f = document.createElement("iframe");
+    f.className = "frame";
+    f.title = item.label;
+    f.setAttribute("allow","fullscreen; clipboard-read; clipboard-write");
+    f.setAttribute("referrerpolicy","no-referrer-when-downgrade");
+    f.addEventListener("load", function(){
+      f.dataset.loaded = "1";
+      var row = nav.querySelector('.row[data-id="'+item.id+'"]');
+      if(row) row.classList.add("loaded");
+      if(current !== item.id) return;
+      hideLoader();
+      showTip();
+    });
+    f.src = item.url;
+    stage.insertBefore(f, loader);
+    frames[item.id] = f;
+    return f;
+  }
+
+  /* ---------- navigasi ---------- */
+  function markActive(id, sys){
+    Array.prototype.forEach.call(nav.querySelectorAll(".row"), function(r){
+      var on = sys ? r.dataset.sys === sys
+             : id  ? r.dataset.id === id
+                   : r.hasAttribute("data-home");
+      r.classList.toggle("active", on);
+      if(on) r.setAttribute("aria-current","page"); else r.removeAttribute("aria-current");
+    });
+  }
+
+  function open(id){
+    var item = byId[id];
+    if(!item) return showHome();
+    if(!allowed(id)){
+      logIt("Akses ditolak", item.label);
+      toastMsg("Menu <b>"+item.label+"</b> tidak tersedia untuk role "+roleDef().label+".", false);
+      return showHome();
+    }
+
+    current = id;
+    currentSys = null;
+    $("#master").hidden = true;
+    $("#audit").hidden  = true;
+    home.hidden = true;
+
+    Array.prototype.forEach.call(stage.querySelectorAll(".frame"), function(f){ f.classList.remove("on"); });
+    var f = ensureFrame(item);
+    f.classList.add("on");
+    touch(id);
+
+    if(f.dataset.loaded) hideLoader(); else showLoader(item);
+
+    markActive(id);
+    cGroup.textContent = item.groupTitle;
+    cTitle.textContent = item.label;
+    document.title = item.label + " —SIGAP";
+    if(bacaHash() !== id) setHash("#"+id);
+    LS.set("last", id);
+    closeNav();
+    logIt("Buka dashboard", item.label);
+  }
+
+  function showHome(){
+    current = null;
+    currentSys = null;
+    $("#master").hidden = true;
+    $("#audit").hidden  = true;
+    hideLoader();
+    Array.prototype.forEach.call(stage.querySelectorAll(".frame"), function(f){ f.classList.remove("on"); });
+    home.hidden = false;
+    markActive(null);
+    cGroup.textContent = "Beranda";
+    cTitle.textContent = "SIGAP";
+    document.title = "SIGAP — sistem inventory gudang andal dan persisi";
+    setHash("#");
+    closeNav();
+  }
+
+  /* ---------- aksi topbar ---------- */
+  function reload(){
+    if(!current){ location.reload(); return; }
+    var item = byId[current], f = frames[current];
+    if(!f) return;
+    f.dataset.loaded = "";
+    var row = nav.querySelector('.row[data-id="'+current+'"]');
+    if(row) row.classList.remove("loaded");
+    showLoader(item);
+    f.src = item.url;
+  }
+  $("#btnReload").addEventListener("click", reload);
+  $("#toastClose").addEventListener("click", hideTip);
+  $("#toastOpen").addEventListener("click", function(){ openExternal(); hideTip(); });
+  $("#btnHintRetry").addEventListener("click", reload);
+
+  function openExternal(){
+    var item = current ? byId[current] : null;
+    if(item) window.open(item.url, "_blank", "noopener");
+  }
+  $("#btnOpen").addEventListener("click", openExternal);
+  $("#btnHintOpen").addEventListener("click", openExternal);
+
+  $("#btnFull").addEventListener("click", function(){
+    try{
+      if(document.fullscreenElement){ document.exitFullscreen(); return; }
+      var target = current ? (frames[current] || stage) : stage;
+      if(target.requestFullscreen){
+        var r = target.requestFullscreen();
+        if(r && r.catch) r.catch(function(){
+          toastMsg("Layar penuh ditolak oleh penyaji halaman ini.", false, 5000);
+        });
+      }
+    }catch(e){
+      toastMsg("Layar penuh tidak tersedia di sini.", false, 5000);
+    }
+  });
+
+  /* ---------- sidebar ---------- */
+  // Bawaan terciutkan; pilihan pemakai setelahnya tetap diingat.
+  if(LS.get("rail", true)) shell.classList.add("rail");
+
+  // Melebar/menyempitkan sidebar berarti iframe ikut berubah ukuran tiap frame animasi —
+  // itu yang bikin tersendat. Lebar frame dikunci dulu ke ukuran terluas selama animasi,
+  // baru dilepas setelah selesai, jadi dashboard hanya menghitung ulang tata letak sekali.
+  $("#btnRail").addEventListener("click", function(){
+    var desktop = window.matchMedia("(min-width: 901px)").matches;
+    if(desktop){
+      var wide = shell.clientWidth - 64;
+      for(var k in frames){ if(frames[k]) frames[k].style.width = wide + "px"; }
+    }
+
+    shell.classList.toggle("rail");
+    LS.set("rail", shell.classList.contains("rail"));
+
+    clearTimeout(railTimer);
+    railTimer = setTimeout(function(){
+      for(var k in frames){ if(frames[k]) frames[k].style.width = ""; }
+    }, 320);
+  });
+
+  function closeNav(){ shell.classList.remove("nav-open"); }
+  $("#btnMenu").addEventListener("click", function(){ shell.classList.toggle("nav-open"); });
+  $("#scrim").addEventListener("click", closeNav);
+
+  /* ---------- pencarian ---------- */
+  qInput.addEventListener("input", function(){
+    var q = qInput.value.trim().toLowerCase();
+    var hits = 0;
+
+    Array.prototype.forEach.call(groupsBox.querySelectorAll(".grp"), function(grp){
+      var shown = 0;
+      Array.prototype.forEach.call(grp.querySelectorAll(".row"), function(row){
+        var it = byId[row.dataset.id];
+        var teks = it ? (it.label + " " + it.groupTitle) : (row.textContent + " sistem");
+        var ok = !q || teks.toLowerCase().indexOf(q) > -1;
+        row.style.display = ok ? "" : "none";
+        if(ok) shown++;
+      });
+      grp.hidden = q && !shown;
+      if(q && shown) grp.classList.remove("collapsed");
+      else if(!q) grp.classList.toggle("collapsed", !!collapsedMap[grp.dataset.group]);
+      hits += shown;
+    });
+
+    rowHome.style.display = q ? "none" : "";
+    nav.classList.toggle("no-hit", !!q && hits === 0);
+  });
+
+  /* ---------- keyboard ---------- */
+  document.addEventListener("keydown", function(e){
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k"){
+      e.preventDefault();
+      shell.classList.remove("rail");
+      shell.classList.add("nav-open");
+      qInput.focus(); qInput.select();
+    } else if(e.key === "Escape"){
+      if($("#ask").classList.contains("on")) tutupTanya(false);
+      else if(modal.classList.contains("on")) tutupModal();
+      else if(qInput.value){ qInput.value=""; qInput.dispatchEvent(new Event("input")); }
+      else closeNav();
+    }
+  });
+
+  /* ===========================================================
+     AUTH — penyimpanan user, sandi, dan sesi
+     Catatan: aplikasi ini sepenuhnya berjalan di browser, jadi lapisan ini
+     berfungsi sebagai pembatas akses antar-pengguna, bukan pengaman data.
+     Pengamanan sesungguhnya harus dipasang di sisi Apps Script.
+     =========================================================== */
+  function two(n){ return (n < 10 ? "0" : "") + n; }
+  function fmtWaktu(t){
+    if(!t) return "–";
+    var d = new Date(t);
+    return two(d.getDate())+"/"+two(d.getMonth()+1)+"/"+d.getFullYear()+" "+two(d.getHours())+":"+two(d.getMinutes());
+  }
+  function esc(v){
+    return String(v == null ? "" : v)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function acak(){
+    if(window.crypto && crypto.getRandomValues){
+      var a = new Uint8Array(8); crypto.getRandomValues(a);
+      return Array.prototype.map.call(a, function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
+    }
+    return (Math.random().toString(16)+Math.random().toString(16)).replace(/0\./g,"").slice(0,16);
+  }
+  function fnv1a(str){
+    var h = 0x811c9dc5;
+    for(var i = 0; i < str.length; i++){
+      h ^= str.charCodeAt(i);
+      h = (h + ((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24))) >>> 0;
+    }
+    return ("00000000"+h.toString(16)).slice(-8);
+  }
+  function hexOf(buf){
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
+  }
+  // SHA-256 hanya tersedia di konteks aman (https / localhost). Saat file dibuka
+  // langsung lewat file://, dipakai hash cadangan; skema-nya ikut disimpan supaya
+  // verifikasi selalu memakai cara yang sama seperti waktu password dibuat.
+  function bisaS256(){ return !!(window.crypto && crypto.subtle && crypto.subtle.digest && window.TextEncoder); }
+  function hashDengan(skema, garam, pw){
+    var teks = garam + "::" + pw;
+    if(skema === "s256" && bisaS256()){
+      try{
+        return crypto.subtle.digest("SHA-256", new TextEncoder().encode(teks))
+          .then(function(buf){ return "s256:" + hexOf(buf); })
+          .catch(function(){ return "fnv:" + fnv1a(teks); });
+      }catch(e){}
+    }
+    return Promise.resolve("fnv:" + fnv1a(teks));
+  }
+  function buatSandi(pw){
+    var garam = acak();
+    return hashDengan(bisaS256() ? "s256" : "fnv", garam, pw)
+      .then(function(h){ return { salt:garam, hash:h }; });
+  }
+  function cekSandi(user, pw){
+    var skema = String(user.hash || "").split(":")[0];
+    return hashDengan(skema, user.salt, pw).then(function(h){ return h === user.hash; });
+  }
+
+  /* ---------- lapisan API ---------- */
+  var cacheUser = [], cacheAudit = [], userTermuat = false, auditTermuat = false;
+
+  function modeSheet(){ return !!(API.url && API.url.indexOf("http") === 0); }
+  function sesiToken(){ var s = LS.get("session", null); return (s && s.token) ? s.token : ""; }
+
+  // Content-Type text/plain dipakai supaya browser tidak mengirim preflight OPTIONS,
+  // yang memang tidak dilayani oleh Apps Script.
+  function apiCall(aksi, data){
+    var isi = { action:aksi, key:API.key, token:sesiToken() };
+    if(data) for(var k in data){ if(data.hasOwnProperty(k)) isi[k] = data[k]; }
+
+    // Apps Script sesekali lambat bangun. Tanpa batas waktu, tombol bisa
+    // menggantung tanpa kabar apa pun.
+    var pemutus = window.AbortController ? new AbortController() : null;
+    var jam = pemutus ? setTimeout(function(){ pemutus.abort(); }, 20000) : null;
+
+    var opsi = {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(isi)
+    };
+    if(pemutus) opsi.signal = pemutus.signal;
+
+    progApi++; progPerbarui();
+    var sudahTutup = false;
+    function tutupProg(){ if(sudahTutup) return; sudahTutup = true; progApi = Math.max(0, progApi - 1); progPerbarui(); }
+
+    return fetch(API.url, opsi).then(function(r){
+      clearTimeout(jam); tutupProg();
+      return r.text().then(function(t){
+        try{ return JSON.parse(t); }
+        catch(e){ throw new Error("Jawaban server tidak dikenali. Pastikan deployment memakai akses \u201cAnyone\u201d."); }
+      });
+    }).then(function(j){
+      if(!j || !j.ok){
+        var err = new Error((j && j.error) || "Server menolak permintaan.");
+        err.authGagal = !!(j && j.authGagal);
+        throw err;
+      }
+      return j.data || {};
+    }).catch(function(err){
+      clearTimeout(jam); tutupProg();
+
+      if(err && err.name === "AbortError"){
+        throw new Error("Google Sheet tidak menjawab dalam 20 detik. Coba lagi sebentar lagi.");
+      }
+      // fetch menolak dengan TypeError kalau jaringan/URL bermasalah — diterjemahkan
+      // supaya pesannya bisa ditindaklanjuti, bukan sekadar "Failed to fetch".
+      if(err && err.name === "TypeError"){
+        throw new Error("Tidak bisa menghubungi Google Sheet. Periksa koneksi internet, URL /exec, dan pastikan deployment dibuat dengan akses \u201cAnyone\u201d.");
+      }
+      // Token ditolak server di tengah pemakaian — misalnya password diganti dari
+      // perangkat lain, atau sesi terlama tergeser karena batas perangkat.
+      // Tanpa ini, pemakai tampak masih masuk padahal semua permintaan ditolak.
+      if(err && err.authGagal) sesiHabis();
+      throw err;
+    });
+  }
+
+  function daftarUser(){ return modeSheet() ? cacheUser : LS.get("users", []); }
+  function simpanUser(list){ if(modeSheet()) cacheUser = list; else LS.set("users", list); }
+  function cariUser(u){
+    var l = daftarUser(), k = String(u || "").toLowerCase();
+    for(var i = 0; i < l.length; i++){ if(l[i].u.toLowerCase() === k) return l[i]; }
+    return null;
+  }
+  function tulisUser(user){
+    var l = daftarUser(), ada = false;
+    for(var i = 0; i < l.length; i++){
+      if(l[i].u.toLowerCase() === user.u.toLowerCase()){ l[i] = user; ada = true; break; }
+    }
+    if(!ada) l.push(user);
+    simpanUser(l);
+  }
+  function adminAktif(){
+    return daftarUser().filter(function(x){ return x.role === "admin" && x.aktif; }).length;
+  }
+  function seedAwal(){
+    if(modeSheet()) return Promise.resolve();      // akun dibuat oleh setup() di Apps Script
+    if(daftarUser().length) return Promise.resolve();
+    return buatSandi(SEED_PW).then(function(h){
+      simpanUser([{ u:SEED_USER, nama:"Administrator", role:"admin", aktif:true,
+                    salt:h.salt, hash:h.hash, bawaan:true, dibuat:Date.now(), lastLogin:null }]);
+    });
+  }
+
+  /* ---------- audit log ---------- */
+  function isiAudit(){ return modeSheet() ? cacheAudit : LS.get("audit", []); }
+
+  // Aksi berikut sudah dicatat sendiri oleh Apps Script, jadi tidak dikirim ulang
+  // dari sini supaya tidak dobel di sheet.
+  var AKSI_SERVER = {
+    "Login":1, "Login gagal":1, "Logout":1, "Tambah user":1, "Ubah user":1,
+    "Hapus user":1, "Ganti password":1, "Aktifkan user":1, "Nonaktifkan user":1,
+    "Kosongkan audit log":1
+  };
+  function logIt(aksi, detail, siapa){
+    var w = siapa || me;
+    var baris = {
+      t: Date.now(),
+      u: w ? w.u : "–", nama: w ? (w.nama || w.u) : "–", role: w ? w.role : "–",
+      aksi: aksi, detail: detail || ""
+    };
+
+    if(modeSheet()){
+      cacheAudit.unshift(baris);
+      if(cacheAudit.length > AUDIT_MAX) cacheAudit.length = AUDIT_MAX;
+      if(me && sesiToken() && !AKSI_SERVER[aksi]){
+        apiCall("log", { aksi:baris.aksi, detail:baris.detail }).catch(function(){});
+      }
+    }else{
+      var rows = isiAudit();
+      rows.unshift(baris);
+      if(rows.length > AUDIT_MAX) rows.length = AUDIT_MAX;
+      LS.set("audit", rows);
+    }
+
+    if(currentSys === "audit") renderAudit();
+  }
+
+  /* ---------- dialog konfirmasi ----------
+     Menggantikan confirm() bawaan browser yang tampil di luar gaya aplikasi. */
+  var jawabTanya = null;
+  function tanya(opt){
+    return new Promise(function(selesai){
+      $("#askTitle").textContent = opt.judul || "Konfirmasi";
+      $("#askMsg").innerHTML     = opt.pesan || "";
+      $("#askYes").textContent   = opt.ya || "Lanjutkan";
+      $("#askYes").className     = "btn " + (opt.bahaya ? "danger" : "primary");
+      $("#askIcWrap").className  = "ask-ic" + (opt.bahaya ? " bahaya" : "");
+      $("#askIc").innerHTML      = '<use href="#i-' + (opt.ikon || "shield-user") + '"/>';
+      jawabTanya = selesai;
+      clearTimeout(askTimer);
+      $("#ask").classList.remove("tutup");
+      $("#ask").classList.add("on");
+      setTimeout(function(){ $("#askYes").focus(); }, 60);
+    });
+  }
+  var askTimer = null;
+  function tutupTanya(hasil){
+    var m = $("#ask");
+    m.classList.add("tutup");
+    clearTimeout(askTimer);
+    askTimer = setTimeout(function(){ m.classList.remove("on","tutup"); }, 160);
+    // Jawabannya diteruskan seketika supaya tindakannya tidak ikut tertunda
+    // oleh animasi penutupan.
+    if(jawabTanya){ var f = jawabTanya; jawabTanya = null; f(hasil); }
+  }
+  $("#askYes").addEventListener("click", function(){ tutupTanya(true); });
+  $("#askNo").addEventListener("click",  function(){ tutupTanya(false); });
+  $("#ask").addEventListener("click", function(e){ if(e.target === $("#ask")) tutupTanya(false); });
+
+  /* ---------- login / logout ---------- */
+  function pasangIdentitas(){
+    if(!me) return;
+    var inisial = (me.nama || me.u).trim().split(/\s+/).slice(0,2)
+                    .map(function(w){ return w.charAt(0); }).join("").toUpperCase();
+    $("#whoAva").textContent  = inisial || "?";
+    $("#whoName").textContent = me.nama || me.u;
+    $("#whoRole").textContent = roleDef().label;
+    $("#whoAva").title = me.nama + " · " + roleDef().label;
+  }
+
+  function startApp(){
+    document.body.classList.remove("locked", "booting");
+    pasangIdentitas();
+    renderSidebar();
+    renderHomeCards();
+    rute();
+    var lastId = LS.get("last", null);
+    if(lastId && allowed(lastId)) idle(function(){ warm(lastId); });
+  }
+
+  function galatLogin(pesan){
+    var box = $("#loginErr");
+    $("#loginErrTx").textContent = pesan;
+    box.classList.add("on");
+    var card = $("#loginForm");
+    card.classList.remove("shake");
+    void card.offsetWidth;
+    card.classList.add("shake");
+  }
+
+  $("#loginForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var u = $("#lgUser").value.trim(), pw = $("#lgPass").value;
+    if(!u || !pw) return galatLogin("Username dan password wajib diisi.");
+
+    var btn = $("#lgSubmit");
+    function selesaiMasuk(){ sibuk(btn, false); }
+    // Apps Script bisa perlu beberapa detik; tombol diam tanpa kabar terasa macet.
+    sibuk(btn, true, modeSheet() ? "Memeriksa…" : "Sebentar…");
+    $("#loginErr").classList.remove("on");
+
+    // Mode sheet: password diperiksa di server, jadi data user tidak pernah
+    // dikirim ke browser sebelum login berhasil.
+    if(modeSheet()){
+      return apiCall("login", { u:u, pw:pw }).then(function(d){
+        selesaiMasuk();
+        me = d.user;
+        LS.set("session", { u:d.user.u, token:d.token, at:Date.now() });
+        LS.set("meCache", d.user);
+        $("#lgPass").value = "";
+        $("#loginErr").classList.remove("on");
+        startApp();                                  // pencatatan Login dilakukan server
+      }).catch(function(err){
+        selesaiMasuk();
+        galatLogin(err.message);
+      });
+    }
+
+    var user = cariUser(u);
+    if(!user){
+      selesaiMasuk();
+      logIt("Login gagal", "username tidak dikenal: " + u, { u:u, nama:u, role:"–" });
+      return galatLogin("Username atau password salah.");
+    }
+    if(!user.aktif){
+      selesaiMasuk();
+      logIt("Login gagal", "akun nonaktif", user);
+      return galatLogin("Akun ini dinonaktifkan. Hubungi admin.");
+    }
+
+    cekSandi(user, pw).then(function(cocok){
+      selesaiMasuk();
+      if(!cocok){
+        logIt("Login gagal", "password salah", user);
+        return galatLogin("Username atau password salah.");
+      }
+      user.lastLogin = Date.now();
+      tulisUser(user);
+      me = user;
+      LS.set("session", { u:user.u, at:Date.now() });
+      $("#lgPass").value = "";
+      $("#loginErr").classList.remove("on");
+      logIt("Login", "");
+      startApp();
+    });
+  });
+
+  $("#lgPeek").addEventListener("click", function(){
+    var f = $("#lgPass"), lihat = f.type === "password";
+    f.type = lihat ? "text" : "password";
+    $("#lgPeek").innerHTML = '<svg class="ic"><use href="#i-' + (lihat ? "eyeoff" : "eye") + '"/></svg>';
+  });
+
+  function bersihkanSesi(){
+    LS.set("session", null);
+    LS.set("meCache", null);
+    cacheUser = []; cacheAudit = []; userTermuat = false; auditTermuat = false;
+
+    // Frame dibersihkan supaya data user sebelumnya tidak tertinggal di layar.
+    for(var k in frames){ if(frames[k]) frames[k].remove(); }
+    frames = {}; order = []; current = null; currentSys = null;
+
+    me = null;
+    hideLoader(); hideTip();
+    home.hidden = false;
+    $("#master").hidden = true;
+    $("#audit").hidden  = true;
+    groupsBox.innerHTML = "";
+    setHash("#");
+    document.title = "SIGAP — sistem inventory gudang andal dan persisi";
+    $("#lgUser").value = ""; $("#lgPass").value = "";
+    $("#loginErr").classList.remove("on");
+  }
+
+  function logout(){
+    if(modeSheet() && sesiToken()) apiCall("logout", {}).catch(function(){});
+    logIt("Logout", "");
+
+    // Aplikasi diredupkan dulu supaya perpindahannya menyatu. Layar login
+    // dipasang sebelum pembersihan: kalau ada satu langkah yang gagal,
+    // halaman tidak pernah tertinggal kosong.
+    shell.classList.add("keluar");
+    setTimeout(function(){
+      document.body.classList.add("locked");
+      shell.classList.remove("keluar");
+      try{ bersihkanSesi(); }catch(e){}
+      setTimeout(function(){ $("#lgUser").focus(); }, 60);
+    }, 200);
+  }
+
+  function sesiHabis(){
+    if(!me) return;                       // sudah di layar login, tidak perlu diulang
+    bersihkanSesi();
+    tampilLogin("Sesi sudah tidak berlaku di server. Silakan masuk lagi.");
+  }
+  $("#btnLogout").addEventListener("click", function(){
+    tanya({
+      judul: "Keluar dari aplikasi?",
+      pesan: "Sesi <b>" + esc(me ? (me.nama || me.u) : "ini") + "</b> akan ditutup. Anda perlu masuk lagi untuk membukanya.",
+      ya: "Keluar", ikon: "logout"
+    }).then(function(ya){ if(ya) logout(); });
+  });
+
+  /* ---------- halaman sistem ---------- */
+  function openSys(name){
+    var d = SYS[name];
+    if(!d) return showHome();
+    if(!canSys(name)){
+      logIt("Akses ditolak", d.label);
+      toastMsg("Halaman <b>"+d.label+"</b> hanya untuk Admin.", false);
+      return showHome();
+    }
+
+    current = null; currentSys = name;
+    hideLoader();
+    Array.prototype.forEach.call(stage.querySelectorAll(".frame"), function(f){ f.classList.remove("on"); });
+    home.hidden = true;
+    $("#master").hidden = name !== "master";
+    $("#audit").hidden  = name !== "audit";
+
+    if(name === "master") muatUsers(); else muatAudit();
+
+    markActive(null, name);
+    cGroup.textContent = "Sistem";
+    cTitle.textContent = d.label;
+    document.title = d.label + " —SIGAP";
+    setHash("#" + d.hash);
+    closeNav();
+    logIt("Buka " + d.label, "");
+  }
+
+  /* ---------- memuat data dari sheet ---------- */
+  function barisPesan(idTbody, kolom, isi){
+    $(idTbody).innerHTML = '<tr><td colspan="'+kolom+'" class="nores" style="border:0">'+isi+'</td></tr>';
+  }
+  function barisMuat(idTbody, kolom, teks){
+    barisPesan(idTbody, kolom, '<span class="muat-baris"><span class="spinkecil"></span>'+teks+'</span>');
+  }
+
+  function muatUsers(){
+    tandaPenyimpanan();
+    if(!modeSheet()) return renderUsers();
+    if(userTermuat) { renderUsers(); }
+    else barisMuat("#userRows", 6, "Memuat data dari Google Sheet…");
+
+    return apiCall("listUsers", {}).then(function(d){
+      cacheUser = d.users || [];
+      userTermuat = true;
+      renderUsers();
+    }).catch(function(err){
+      if(!userTermuat) barisPesan("#userRows", 6, "Gagal memuat: " + esc(err.message));
+      else toastMsg("Gagal menyegarkan data user: " + esc(err.message), false, 7000);
+    });
+  }
+
+  function muatAudit(){
+    if(!modeSheet()) return renderAudit();
+    if(auditTermuat) { renderAudit(); }
+    else barisMuat("#auditRows", 5, "Memuat catatan dari Google Sheet…");
+
+    return apiCall("listLog", { limit:500 }).then(function(d){
+      cacheAudit = d.log || [];
+      auditTermuat = true;
+      renderAudit();
+    }).catch(function(err){
+      if(!auditTermuat) barisPesan("#auditRows", 5, "Gagal memuat: " + esc(err.message));
+      else toastMsg("Gagal menyegarkan audit log: " + esc(err.message), false, 7000);
+    });
+  }
+
+  function tandaPenyimpanan(){
+    var box = $("#conn");
+    if(!box) return;
+    box.className = "conn " + (modeSheet() ? "ok" : "warn");
+    box.innerHTML = modeSheet()
+      ? '<b>Google Sheet</b><span>Data user dan audit log tersimpan permanen, sama di semua browser dan perangkat.</span>'
+      : '<b>Browser ini saja</b><span>API.url belum diisi, jadi data hanya ada di localStorage browser ini dan hilang kalau ganti browser atau perangkat.</span>';
+    if(modeSheet()){
+      var t = el("button","btn ghost sm","Uji koneksi");
+      t.type = "button";
+      t.addEventListener("click", function(){
+        sibuk(t, true, "Menguji…");
+        apiCall("ping", {}).then(function(d){
+          sibuk(t, false);
+          toastMsg("Terhubung ke <b>"+esc(d.sheet)+"</b> — "+d.jumlahUser+" user, "+d.jumlahLog+" catatan audit.", false, 7000);
+        }).catch(function(err){
+          sibuk(t, false);
+          toastMsg("Gagal: " + esc(err.message), false, 9000);
+        });
+      });
+      box.appendChild(t);
+    }
+  }
+
+  /* ---------- master user ---------- */
+  function renderUsers(){
+    var body = $("#userRows"), list = daftarUser().slice().sort(function(a,b){
+      return (a.nama || a.u).localeCompare(b.nama || b.u);
+    });
+    body.innerHTML = "";
+
+    list.forEach(function(u){
+      var sendiri = me && u.u.toLowerCase() === me.u.toLowerCase();
+      var tr = el("tr");
+      tr.innerHTML =
+        '<td><b>'+esc(u.nama)+'</b>'+(sendiri ? ' <span class="muted">(Anda)</span>' : '')+'</td>'+
+        '<td class="mono">'+esc(u.u)+'</td>'+
+        '<td><span class="chip '+esc(u.role)+'">'+esc((ROLES[u.role]||{}).label || u.role)+'</span></td>'+
+        '<td><span class="chip '+(u.aktif ? 'on">Aktif' : 'off">Nonaktif')+'</span></td>'+
+        '<td class="mono nowrap">'+fmtWaktu(u.lastLogin)+'</td>'+
+        '<td><span class="acts">'+
+          '<button class="iconbtn" data-act="edit"  title="Ubah data">'+ico("edit")+'</button>'+
+          '<button class="iconbtn" data-act="pass"  title="Ganti password">'+ico("key")+'</button>'+
+          '<button class="iconbtn" data-act="aktif" title="'+(u.aktif ? 'Nonaktifkan' : 'Aktifkan')+'">'+ico("power")+'</button>'+
+          '<button class="iconbtn" data-act="hapus" title="Hapus user">'+ico("trash")+'</button>'+
+        '</span></td>';
+
+      Array.prototype.forEach.call(tr.querySelectorAll("[data-act]"), function(b){
+        b.addEventListener("click", function(){ aksiUser(b.getAttribute("data-act"), u.u); });
+      });
+      body.appendChild(tr);
+    });
+
+    $("#noUser").style.display = list.length ? "none" : "block";
+    var adm = cariUser(SEED_USER);
+    $("#seedWarn").classList.toggle("on", !!(adm && adm.bawaan));
+  }
+
+  function tabelSibuk(nyala){
+    Array.prototype.forEach.call(document.querySelectorAll(".tbl-wrap"), function(w){
+      w.classList.toggle("sibuk", !!nyala);
+    });
+  }
+
+  function aksiUser(act, username){
+    var u = cariUser(username);
+    if(!u) return;
+    var sendiri = me && u.u.toLowerCase() === me.u.toLowerCase();
+
+    if(act === "edit") return bukaModal("edit", u);
+    if(act === "pass") return bukaModal("pass", u);
+
+    if(act === "aktif"){
+      if(sendiri) return toastMsg("Akun sendiri tidak bisa dinonaktifkan.", false);
+      if(u.aktif && u.role === "admin" && adminAktif() <= 1)
+        return toastMsg("Minimal harus ada satu admin aktif.", false);
+
+      if(modeSheet()){
+        tabelSibuk(true);
+        return apiCall("saveUser", { mode:"edit", u:u.u, nama:u.nama, role:u.role, aktif: u.aktif ? 0 : 1 })
+          .then(function(d){ tabelSibuk(false); cacheUser = d.users || cacheUser; renderUsers(); })
+          .catch(function(err){ tabelSibuk(false); toastMsg(esc(err.message), false, 7000); });
+      }
+
+      u.aktif = !u.aktif;
+      tulisUser(u);
+      logIt(u.aktif ? "Aktifkan user" : "Nonaktifkan user", u.u);
+      renderUsers();
+      return;
+    }
+
+    if(act === "hapus"){
+      if(sendiri) return toastMsg("Akun sendiri tidak bisa dihapus.", false);
+      if(u.role === "admin" && adminAktif() <= 1)
+        return toastMsg("Minimal harus ada satu admin aktif.", false);
+      return tanya({
+        judul: "Hapus user?",
+        pesan: "<b>" + esc(u.nama) + "</b> (" + esc(u.u) + ") akan dihapus permanen dan tidak bisa dipulihkan.",
+        ya: "Hapus user", ikon: "trash", bahaya: true
+      }).then(function(ya){
+        if(!ya) return;
+
+        if(modeSheet()){
+          tabelSibuk(true);
+          return apiCall("deleteUser", { u:u.u })
+            .then(function(d){ tabelSibuk(false); cacheUser = d.users || cacheUser; renderUsers();
+                               toastMsg("User <b>"+esc(u.u)+"</b> dihapus dari Google Sheet.", false, 5000); })
+            .catch(function(err){ tabelSibuk(false); toastMsg(esc(err.message), false, 7000); });
+        }
+
+        simpanUser(daftarUser().filter(function(x){ return x.u.toLowerCase() !== u.u.toLowerCase(); }));
+        logIt("Hapus user", u.u);
+        renderUsers();
+      });
+    }
+  }
+
+  /* ---------- modal tambah / ubah user ---------- */
+  var modal = $("#modal"), mode = "add", targetUser = null;
+  function fieldOf(inp){ return inp.parentNode.parentNode; }   // .wrap -> .field
+
+  function bukaModal(m, u){
+    mode = m; targetUser = u || null;
+    $("#mdErr").classList.remove("on");
+    $("#mdTitle").textContent = m === "add" ? "Tambah User" : m === "edit" ? "Ubah User" : "Ganti Password";
+
+    $("#mdNama").value  = u ? u.nama : "";
+    $("#mdUser").value  = u ? u.u : "";
+    $("#mdRole").value  = u ? u.role : "outlet";
+    $("#mdAktif").value = u ? (u.aktif ? "1" : "0") : "1";
+    $("#mdPass").value  = "";
+    $("#mdPass").type   = "password";
+
+    var hanyaSandi = (m === "pass");
+    fieldOf($("#mdNama")).style.display  = hanyaSandi ? "none" : "";
+    fieldOf($("#mdUser")).style.display  = hanyaSandi ? "none" : "";
+    fieldOf($("#mdRole")).style.display  = hanyaSandi ? "none" : "";
+    fieldOf($("#mdAktif")).style.display = hanyaSandi ? "none" : "";
+    $("#mdPassLabel").textContent = m === "edit" ? "Password baru (kosongkan bila tidak diganti)" : "Password";
+    $("#mdUser").disabled = (m !== "add");
+
+    clearTimeout(modalTimer);
+    modal.classList.remove("tutup");
+    modal.classList.add("on");
+    setTimeout(function(){ (hanyaSandi ? $("#mdPass") : $("#mdNama")).focus(); }, 50);
+  }
+  var modalTimer = null;
+  function tutupModal(){
+    modal.classList.add("tutup");
+    clearTimeout(modalTimer);
+    modalTimer = setTimeout(function(){ modal.classList.remove("on","tutup"); }, 160);
+    targetUser = null;
+  }
+  $("#mdClose").addEventListener("click", tutupModal);
+  $("#mdCancel").addEventListener("click", tutupModal);
+  modal.addEventListener("click", function(e){ if(e.target === modal) tutupModal(); });
+  $("#mdPeek").addEventListener("click", function(){
+    var f = $("#mdPass"), lihat = f.type === "password";
+    f.type = lihat ? "text" : "password";
+    $("#mdPeek").innerHTML = '<svg class="ic"><use href="#i-' + (lihat ? "eyeoff" : "eye") + '"/></svg>';
+  });
+  $("#btnAddUser").addEventListener("click", function(){ bukaModal("add", null); });
+
+  function galatModal(pesan){
+    $("#mdErrTx").textContent = pesan;
+    $("#mdErr").classList.add("on");
+  }
+
+  $("#userForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var nama = $("#mdNama").value.trim(),
+        uname = $("#mdUser").value.trim(),
+        pw = $("#mdPass").value,
+        role = $("#mdRole").value,
+        aktif = $("#mdAktif").value === "1";
+
+    // Mode sheet: seluruh aturan (unik, minimal satu admin, panjang password)
+    // ditegakkan lagi di server, jadi tidak bisa dilewati dari browser.
+    if(modeSheet()){
+      var muatan;
+      if(mode === "pass"){
+        if(pw.length < 5) return galatModal("Password minimal 5 karakter.");
+        muatan = { mode:"edit", u:targetUser.u, nama:targetUser.nama, role:targetUser.role,
+                   aktif: targetUser.aktif ? 1 : 0, pw:pw };
+      }else{
+        if(!nama) return galatModal("Nama wajib diisi.");
+        if(!/^[a-zA-Z0-9._-]{3,20}$/.test(uname))
+          return galatModal("Username 3–20 karakter, hanya huruf, angka, titik, garis bawah, atau strip.");
+        if(!ROLES[role]) return galatModal("Role tidak dikenal.");
+        if(mode === "add" && pw.length < 5) return galatModal("Password minimal 5 karakter.");
+        muatan = { mode:mode, u: mode === "add" ? uname : targetUser.u,
+                   nama:nama, role:role, aktif: aktif ? 1 : 0, pw:pw };
+      }
+
+      var gantiSandiSendiri = !!(muatan.pw && me && muatan.u.toLowerCase() === me.u.toLowerCase());
+      sibuk($("#mdSimpan"), true, "Menyimpan…");
+
+      return apiCall("saveUser", muatan).then(function(d){
+        sibuk($("#mdSimpan"), false);
+        cacheUser = d.users || cacheUser;
+        tutupModal(); renderUsers();
+
+        if(gantiSandiSendiri){
+          // Server memutus seluruh sesi lama begitu password diganti.
+          toastMsg("Password diperbarui. Silakan masuk lagi dengan password baru.", false, 6000);
+          LS.set("session", null); LS.set("meCache", null);
+          return setTimeout(function(){ location.reload(); }, 1600);
+        }
+
+        if(me && muatan.u.toLowerCase() === me.u.toLowerCase()){
+          for(var i = 0; i < cacheUser.length; i++){
+            if(cacheUser[i].u.toLowerCase() === me.u.toLowerCase()) me = cacheUser[i];
+          }
+          LS.set("meCache", me);
+          pasangIdentitas(); renderSidebar(); renderHomeCards();
+          if(currentSys && !canSys(currentSys)) showHome();
+        }
+
+        toastMsg(mode === "add"
+          ? "User <b>"+esc(muatan.u)+"</b> tersimpan di Google Sheet."
+          : "Perubahan <b>"+esc(muatan.u)+"</b> tersimpan di Google Sheet.", false, 5000);
+      }).catch(function(err){
+        sibuk($("#mdSimpan"), false);
+        galatModal(err.message);
+      });
+    }
+
+    if(mode === "pass"){
+      if(pw.length < 5) return galatModal("Password minimal 5 karakter.");
+      return buatSandi(pw).then(function(h){
+        targetUser.salt = h.salt; targetUser.hash = h.hash; targetUser.bawaan = false;
+        tulisUser(targetUser);
+        if(me && me.u === targetUser.u) me = targetUser;
+        logIt("Ganti password", targetUser.u);
+        tutupModal(); renderUsers();
+        toastMsg("Password <b>"+esc(targetUser.u)+"</b> diperbarui.", false, 4000);
+      });
+    }
+
+    if(!nama) return galatModal("Nama wajib diisi.");
+    if(!/^[a-zA-Z0-9._-]{3,20}$/.test(uname))
+      return galatModal("Username 3–20 karakter, hanya huruf, angka, titik, garis bawah, atau strip.");
+    if(!ROLES[role]) return galatModal("Role tidak dikenal.");
+
+    if(mode === "add"){
+      if(cariUser(uname)) return galatModal("Username sudah dipakai.");
+      if(pw.length < 5) return galatModal("Password minimal 5 karakter.");
+      return buatSandi(pw).then(function(h){
+        tulisUser({ u:uname, nama:nama, role:role, aktif:aktif,
+                    salt:h.salt, hash:h.hash, bawaan:false, dibuat:Date.now(), lastLogin:null });
+        logIt("Tambah user", uname + " · " + (ROLES[role].label));
+        tutupModal(); renderUsers();
+        toastMsg("User <b>"+esc(uname)+"</b> ditambahkan.", false, 4000);
+      });
+    }
+
+    // mode edit
+    var sendiri = me && targetUser.u.toLowerCase() === me.u.toLowerCase();
+    if(sendiri && role !== "admin" && targetUser.role === "admin" && adminAktif() <= 1)
+      return galatModal("Minimal harus ada satu admin aktif.");
+    if(!aktif && sendiri) return galatModal("Akun sendiri tidak bisa dinonaktifkan.");
+    if(targetUser.role === "admin" && targetUser.aktif && (role !== "admin" || !aktif) && adminAktif() <= 1)
+      return galatModal("Minimal harus ada satu admin aktif.");
+
+    var ubah = [];
+    if(targetUser.nama !== nama)  ubah.push("nama");
+    if(targetUser.role !== role)  ubah.push("role → " + ROLES[role].label);
+    if(targetUser.aktif !== aktif) ubah.push(aktif ? "diaktifkan" : "dinonaktifkan");
+
+    targetUser.nama = nama; targetUser.role = role; targetUser.aktif = aktif;
+
+    var lanjut = pw ? (pw.length < 5
+        ? Promise.reject("Password minimal 5 karakter.")
+        : buatSandi(pw).then(function(h){
+            targetUser.salt = h.salt; targetUser.hash = h.hash; targetUser.bawaan = false;
+            ubah.push("password");
+          }))
+      : Promise.resolve();
+
+    lanjut.then(function(){
+      tulisUser(targetUser);
+      logIt("Ubah user", targetUser.u + (ubah.length ? " · " + ubah.join(", ") : ""));
+      if(me && me.u.toLowerCase() === targetUser.u.toLowerCase()){
+        me = targetUser;
+        pasangIdentitas();
+        renderSidebar(); renderHomeCards();
+        if(!canSys(currentSys)) showHome();
+      }
+      tutupModal(); renderUsers();
+    }, function(pesan){ galatModal(pesan); });
+  });
+
+  /* ---------- tampilan audit log ---------- */
+  function renderAudit(){
+    var semua = isiAudit(),
+        q = ($("#auQ").value || "").toLowerCase(),
+        fa = $("#auAksi").value;
+
+    var opsi = [], lihat = {};
+    semua.forEach(function(r){ if(!lihat[r.aksi]){ lihat[r.aksi] = 1; opsi.push(r.aksi); } });
+    opsi.sort();
+    var sel = $("#auAksi"), lama = sel.value;
+    sel.innerHTML = '<option value="">Semua aksi</option>' +
+      opsi.map(function(a){ return '<option value="'+esc(a)+'">'+esc(a)+'</option>'; }).join("");
+    sel.value = opsi.indexOf(lama) > -1 ? lama : "";
+    fa = sel.value;
+
+    var rows = semua.filter(function(r){
+      if(fa && r.aksi !== fa) return false;
+      if(!q) return true;
+      return (r.u+" "+r.nama+" "+r.role+" "+r.aksi+" "+r.detail).toLowerCase().indexOf(q) > -1;
+    });
+
+    var body = $("#auditRows");
+    body.innerHTML = rows.map(function(r){
+      var buruk = /gagal|ditolak|hapus/i.test(r.aksi);
+      return '<tr>'+
+        '<td class="mono nowrap">'+fmtWaktu(r.t)+'</td>'+
+        '<td><b>'+esc(r.nama)+'</b><br><span class="mono muted">'+esc(r.u)+'</span></td>'+
+        '<td><span class="chip '+esc(r.role)+'">'+esc((ROLES[r.role]||{}).label || r.role)+'</span></td>'+
+        '<td><span class="chip'+(buruk ? ' bad' : '')+'">'+esc(r.aksi)+'</span></td>'+
+        '<td class="muted">'+esc(r.detail || "–")+'</td>'+
+      '</tr>';
+    }).join("");
+
+    $("#noAudit").style.display = rows.length ? "none" : "block";
+    $("#auCount").textContent = rows.length === semua.length
+      ? semua.length + " catatan"
+      : rows.length + " dari " + semua.length + " catatan";
+  }
+  $("#auQ").addEventListener("input", renderAudit);
+  $("#auAksi").addEventListener("change", renderAudit);
+
+  $("#btnCsv").addEventListener("click", function(){
+    var rows = isiAudit();
+    if(!rows.length) return toastMsg("Belum ada catatan untuk diunduh.", false, 4000);
+    function sel(v){ return '"' + String(v == null ? "" : v).replace(/"/g,'""') + '"'; }
+    var baris = [["Waktu","Username","Nama","Role","Aksi","Detail"].join(",")].concat(
+      rows.map(function(r){ return [fmtWaktu(r.t), r.u, r.nama, r.role, r.aksi, r.detail].map(sel).join(","); })
+    );
+    var blob = new Blob(["﻿" + baris.join("\r\n")], { type:"text/csv;charset=utf-8" });
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    var d = new Date();
+    a.href = url;
+    a.download = "audit-log-sigap-" + d.getFullYear() + two(d.getMonth()+1) + two(d.getDate()) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    logIt("Unduh audit log", rows.length + " baris");
+  });
+
+  $("#btnClearLog").addEventListener("click", function(){
+    tanya({
+      judul: "Kosongkan audit log?",
+      pesan: "Seluruh catatan aktivitas akan dihapus dan tidak bisa dipulihkan. Unduh CSV-nya dulu bila masih diperlukan.",
+      ya: "Kosongkan", ikon: "trash", bahaya: true
+    }).then(function(ya){ if(ya) kosongkanLog(); });
+  });
+
+  function kosongkanLog(){
+    if(modeSheet()){
+      var tb = $("#btnClearLog");
+      sibuk(tb, true, "Mengosongkan…");
+      tabelSibuk(true);
+      return apiCall("clearLog", {}).then(function(){
+        sibuk(tb, false); tabelSibuk(false);
+        cacheAudit = []; renderAudit();
+        toastMsg("Audit log di Google Sheet dikosongkan.", false, 5000);
+      }).catch(function(err){
+        sibuk(tb, false); tabelSibuk(false);
+        toastMsg(esc(err.message), false, 7000);
+      });
+    }
+
+    LS.set("audit", []);
+    logIt("Kosongkan audit log", "");
+    renderAudit();
+  }
+
+  /* ---------- routing ---------- */
+  function rute(){
+    var h = bacaHash();
+    if(h === SYS.master.hash) return openSys("master");
+    if(h === SYS.audit.hash)  return openSys("audit");
+    if(h && byId[h])          return open(h);
+    showHome();
+  }
+  window.addEventListener("hashchange", function(){ if(me) rute(); });
+
+  /* ---------- mulai ---------- */
+  // Sesi tidak dibatasi waktu: sekali login, tetap masuk sampai menekan keluar.
+  function tampilLogin(pesan){
+    document.body.classList.remove("booting");
+    document.body.classList.add("locked");
+    shell.classList.remove("keluar");
+    if(pesan) galatLogin(pesan);
+    setTimeout(function(){ $("#lgUser").focus(); }, 80);
+  }
+
+  seedAwal().then(function(){
+    var sesi = LS.get("session", null);
+
+    if(modeSheet()){
+      if(!sesi || !sesi.token) return tampilLogin();
+      return apiCall("me", {}).then(function(d){
+        me = d.user;
+        LS.set("meCache", d.user);
+        startApp();
+      }).catch(function(err){
+        if(err.authGagal){
+          LS.set("session", null);
+          return tampilLogin("Sesi sudah tidak berlaku, silakan masuk lagi.");
+        }
+        // Server tidak terjangkau. Daripada mengunci pemakai di luar aplikasi,
+        // identitas terakhir dipakai dulu dan perubahan data ditahan.
+        var cache = LS.get("meCache", null);
+        if(cache && cache.u === sesi.u){
+          me = cache;
+          startApp();
+          toastMsg("Google Sheet tidak bisa dihubungi. Menu tetap terbuka, tapi perubahan user belum bisa disimpan.", false, 9000);
+        }else{
+          tampilLogin(err.message);
+        }
+      });
+    }
+
+    var user = sesi && sesi.u ? cariUser(sesi.u) : null;
+    if(user && user.aktif){
+      me = user;
+      startApp();
+    }else{
+      if(sesi) LS.set("session", null);
+      tampilLogin();
+    }
+  });
+})();
+</script>
+</body>
+</html>

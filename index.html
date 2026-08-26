@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
   // 1. MASUKKAN URL WEB APP BAPAK DI SINI
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwvjSCowwdZvJBIMwOJiM3GdoRdOvUjKR6kfKI7NSKjc6MQ66wcpjki2Uv6XLGEwrQlZQ/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbypN-KNEgJ_g9bsBy-AEWHdtGvgZ8mCZS1-PYXcWwErcYU3GrgS5r_wOtYvZ64L-W6_eA/exec";
 
   // 2. FUNGSI PROXY: Mengubah otomatis google.script.run menjadi fetch()
   window.google = {
@@ -744,7 +744,10 @@
     font-size:var(--t-xs);font-weight:600;letter-spacing:-.004em;
     border:1px solid var(--line);background:var(--surface-2);color:var(--txt-2);white-space:nowrap;
   }
+  .chip.manager{border-color:#bbf7d0;background:#dcfce7;color:#15803d}
   .chip.admin{border-color:var(--acc-line);background:var(--acc-soft);color:var(--acc-2)}
+  .chip.crew_cafe{border-color:#fed7aa;background:#ffedd5;color:#c2410c}
+  .chip.crew_premiere{border-color:#dfd4f7;background:#f2ecfd;color:#5b21b6}
   .chip.area{border-color:#c9e2f7;background:#eaf4fc;color:#1d5f8f}
   .chip.outlet{border-color:#dfd4f7;background:#f2ecfd;color:#5b21b6}
   .chip.on{border-color:var(--ok-line);background:var(--ok-soft);color:#0a6b45}
@@ -1400,9 +1403,10 @@
     </label>
     <label class="field"><span>Role</span>
       <span class="wrap"><select class="inp" id="mdRole">
-        <option value="admin">Admin — akses penuh</option>
-        <option value="area">Area — semua dashboard, tanpa menu sistem</option>
-        <option value="outlet">Outlet — dashboard terbatas</option>
+        <option value="manager">Manager — akses penuh tanpa batasan</option>
+        <option value="admin">Admin — semua dashboard, tanpa halaman sistem</option>
+        <option value="crew_cafe">Crew Cafe — akses khusus Cafe</option>
+        <option value="crew_premiere">Crew Premiere — akses khusus Premiere</option>
       </select></span>
     </label>
     <label class="field"><span>Status</span>
@@ -1443,11 +1447,11 @@
       title: "CAFE",
       icon: IC_GRUP,
       items: [
-        { id:"sigap-cafe",       label:"SIGAP CAFE",     icon:IC_ITEM, url:"https://system21-os.github.io/SIGAP-CAFE/" },
-        { id:"Transit-Cafe",       label:"Transit Cafe",     icon:IC_ITEM, url:"https://system21-os.github.io/SIGAP-TRANSIT/" },
-        { id:"aktivitas-cafe",   label:"Aktivitas Cafe", icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbzsSLnGwkyvX2TPjM86Lz0rnRui3qfkYUGRhff8r3vTcm3TKV2VCxyMwTZxDysYFinQyw/exec" },
-        { id:"Weekly-cafe",   label:"Weekly Task Cafe", icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbzhSh2lYoQfTnECkUXfpOch2poqC7PX1qArY2BKP5hQglzkab86YNkBeDR70Y724h7P/exec" },
-        { id:"convertion",       label:"Convertion",     icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbwux3IKpGGBHPWAntLicINiFGkCU21fvrXMld7lH6KlhSwdbIXMRPrIl-sh6E6L83VS/exec" }
+        { id:"sigap-cafe",       label:"SIGAP CAFE",          icon:IC_ITEM, url:"https://system21-os.github.io/SIGAP-CAFE/" },
+        { id:"Transit-Cafe",     label:"Transit Cafe",        icon:IC_ITEM, url:"https://system21-os.github.io/SIGAP-TRANSIT/" },
+        { id:"aktivitas-cafe",   label:"Aktivitas Cafe",      icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbzsSLnGwkyvX2TPjM86Lz0rnRui3qfkYUGRhff8r3vTcm3TKV2VCxyMwTZxDysYFinQyw/exec" },
+        { id:"Weekly-cafe",      label:"Weekly Task Cafe",    icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbzhSh2lYoQfTnECkUXfpOch2poqC7PX1qArY2BKP5hQglzkab86YNkBeDR70Y724h7P/exec" },
+        { id:"convertion",       label:"Convertion",          icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbwux3IKpGGBHPWAntLicINiFGkCU21fvrXMld7lH6KlhSwdbIXMRPrIl-sh6E6L83VS/exec" }
       ]
     },
     {
@@ -1455,10 +1459,10 @@
       title: "PREMIERE",
       icon: IC_GRUP,
       items: [
-        { id:"sigap-premiere",     label:"SIGAP PREMIERE",     icon:IC_ITEM, url:"https://system21-os.github.io/Sigap-Pemiere/" },
-        { id:"aktivitas-premiere", label:"Aktivitas Premiere", icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbzwgk6Epb0eW2XL7JT8yofeGpfPY0qexJoUtvOHJM5BdgJmG64PjE5643-FwM1lJAXH/exec" },
-        { id:"Weekly-Premiere",   label:"Weekly Task Premiere", icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbwB6kXuyRJC1LMJYfdCCeQdtZP__zRaxTdrXlirUcKT547SEf4v2-fnIUlRJtp4EGNGKw/exec" },
-        { id:"convertion",         label:"Convertion",         icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbzFwnHlR-3kD2ys95m7nObqhV-9upSQJccLoPntAkIE1EriePGA7ybDiI3qXzqwqAOhlA/exec" }
+        { id:"sigap-premiere",         label:"SIGAP PREMIERE",         icon:IC_ITEM, url:"https://system21-os.github.io/Sigap-Pemiere/" },
+        { id:"aktivitas-premiere",     label:"Aktivitas Premiere",     icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbzwgk6Epb0eW2XL7JT8yofeGpfPY0qexJoUtvOHJM5BdgJmG64PjE5643-FwM1lJAXH/exec" },
+        { id:"Weekly-Premiere",        label:"Weekly Task Premiere",   icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbwB6kXuyRJC1LMJYfdCCeQdtZP__zRaxTdrXlirUcKT547SEf4v2-fnIUlRJtp4EGNGKw/exec" },
+        { id:"convertion-prem",        label:"Convertion",             icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbzFwnHlR-3kD2ys95m7nObqhV-9upSQJccLoPntAkIE1EriePGA7ybDiI3qXzqwqAOhlA/exec" }
       ]
     },
     {
@@ -1466,8 +1470,8 @@
       title: "Report",
       icon: IC_GRUP,
       items: [
-        { id:"Detail-Inventory",        label:"Detail Inventory",      icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbwfsu9mmmD1dkT5ZNhHjWzVNnpInpHk3zHrrRaB5AjqirDfDzHqZEiR922l3icvrD5Vfg/exec" },
-        { id:"inventory-report", label:"Inventory Report", icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbxgYM1IJNxIsH2jYKP2VKKdn82JdQiUq67sBN9AfTMvLJ0aItjv_z6l7eq1a4V3rGtq7w/exec" },
+        { id:"Detail-Inventory", label:"Detail Inventory", icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbwfsu9mmmD1dkT5ZNhHjWzVNnpInpHk3zHrrRaB5AjqirDfDzHqZEiR922l3icvrD5Vfg/exec" },
+        { id:"inventory-report", label:"Inventory Report", icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbxgYM1IJNxIsH2jYKP2VKKdn82JdQiUq67sBN9AfTMvLJ0aItjv_z6l7eq1a4V3rGtq7w/exec" }
       ]
     },
     {
@@ -1475,24 +1479,31 @@
       title: "Informasi",
       icon: IC_GRUP,
       items: [
-        { id:"all-sk",        label:"All-sk",        icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbxPvp0hM2x_GY0k9nxU99Zxoi_AN6piBVDbv7C7TJGf6lYFst66NnH9ZaTCwaxEfDM/exec" },
-        { id:"location-gudang", label:"Location Gudang", icon:IC_ITEM, url:"" }
+        { id:"all-sk",           label:"All-sk",          icon:IC_ITEM, url:"https://script.google.com/macros/s/AKfycbxPvp0hM2x_GY0k9nxU99Zxoi_AN6piBVDbv7C7TJGf6lYFst66NnH9ZaTCwaxEfDM/exec" },
+        { id:"location-gudang",  label:"Location Gudang", icon:IC_ITEM, url:"" }
       ]
     }
   ];
 
   /* ===========================================================
      HAK AKSES
+     allow: id dashboard yang diizinkan (whitelist khusus)
      deny : id dashboard yang disembunyikan untuk role tersebut
      sys  : halaman sistem yang boleh dibuka
      =========================================================== */
   var ROLES = {
-    admin:  { label:"Admin",  desc:"Akses penuh",
-              deny:[], sys:["master","audit"] },
-    area:   { label:"Area",   desc:"Semua dashboard, tanpa menu sistem",
-              deny:[], sys:[] },
-    outlet: { label:"Outlet", desc:"Dashboard terbatas",
-              deny:["best-cashier","kpi-analyst","google-review","inventory-report"], sys:[] }
+    manager:       { label:"Manager",       desc:"Akses penuh tanpa batasan",
+                     deny:[], sys:["master","audit"] },
+    admin:         { label:"Admin",         desc:"Semua dashboard, tanpa halaman sistem",
+                     deny:[], sys:[] },
+    crew_cafe:     { label:"Crew Cafe",     desc:"Halaman Cafe dan subnya",
+                     allow:["sigap-cafe","Transit-Cafe","Weekly-cafe","all-sk","aktivitas-cafe","convertion"], sys:[] },
+    crew_premiere: { label:"Crew Premiere", desc:"Halaman Premiere dan subnya",
+                     allow:["sigap-premiere","Weekly-Premiere","all-sk","aktivitas-premiere","convertion-prem"], sys:[] },
+    area:          { label:"Area",          desc:"Semua dashboard, tanpa menu sistem",
+                     deny:[], sys:[] },
+    outlet:        { label:"Outlet",        desc:"Dashboard terbatas",
+                     deny:["best-cashier","kpi-analyst","google-review","inventory-report"], sys:[] }
   };
 
   var SYS = {
@@ -1563,11 +1574,17 @@
     try{ history.replaceState(null, "", h); }catch(e){}
   }
   function bacaHash(){
-    try{ return location.hash.replace(/^#\/?/, ""); }catch(e){ return ""; }
+    try{ return location.hash.replace(/^#/?/, ""); }catch(e){ return ""; }
   }
 
-  function roleDef(){ return (me && ROLES[me.role]) || { label:"–", deny:[], sys:[] }; }
-  function allowed(id){ return !!me && !!byId[id] && roleDef().deny.indexOf(id) < 0; }
+  function roleDef(){ return (me && ROLES[me.role]) || { label:"–", deny:[], allow:null, sys:[] }; }
+  function allowed(id){
+    if(!me || !byId[id]) return false;
+    var rd = roleDef();
+    if(rd.allow && rd.allow.length > 0) return rd.allow.indexOf(id) > -1;
+    if(rd.deny && rd.deny.length > 0) return rd.deny.indexOf(id) < 0;
+    return true;
+  }
   function canSys(name){ return !!me && roleDef().sys.indexOf(name) > -1; }
 
   /* ---------- logo: pakai assets/logo.png bila tersedia ---------- */
@@ -1579,8 +1596,8 @@
     var tplMark = $("#tpl-mark").innerHTML;
 
     function unik(html, tanda){
-      return html.replace(/id="(sg[\w-]+)"/g, 'id="$1' + tanda + '"')
-                 .replace(/url\(#(sg[\w-]+)\)/g, 'url(#$1' + tanda + ')');
+      return html.replace(/id="(sg[w-]+)"/g, 'id="$1' + tanda + '"')
+                 .replace(/url(#(sg[w-]+))/g, 'url(#$1' + tanda + ')');
     }
     function bikin(html, tanda){
       var wrap = document.createElement("div");
@@ -2013,7 +2030,7 @@
       var a = new Uint8Array(8); crypto.getRandomValues(a);
       return Array.prototype.map.call(a, function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
     }
-    return (Math.random().toString(16)+Math.random().toString(16)).replace(/0\./g,"").slice(0,16);
+    return (Math.random().toString(16)+Math.random().toString(16)).replace(/0./g,"").slice(0,16);
   }
   function fnv1a(str){
     var h = 0x811c9dc5;
@@ -2083,7 +2100,7 @@
       clearTimeout(jam); tutupProg();
       return r.text().then(function(t){
         try{ return JSON.parse(t); }
-        catch(e){ throw new Error("Jawaban server tidak dikenali. Pastikan deployment memakai akses \u201cAnyone\u201d."); }
+        catch(e){ throw new Error("Jawaban server tidak dikenali. Pastikan deployment memakai akses “Anyone”."); }
       });
     }).then(function(j){
       if(!j || !j.ok){
@@ -2101,7 +2118,7 @@
       // fetch menolak dengan TypeError kalau jaringan/URL bermasalah — diterjemahkan
       // supaya pesannya bisa ditindaklanjuti, bukan sekadar "Failed to fetch".
       if(err && err.name === "TypeError"){
-        throw new Error("Tidak bisa menghubungi Google Sheet. Periksa koneksi internet, URL /exec, dan pastikan deployment dibuat dengan akses \u201cAnyone\u201d.");
+        throw new Error("Tidak bisa menghubungi Google Sheet. Periksa koneksi internet, URL /exec, dan pastikan deployment dibuat dengan akses “Anyone”.");
       }
       // Token ditolak server di tengah pemakaian — misalnya password diganti dari
       // perangkat lain, atau sesi terlama tergeser karena batas perangkat.
@@ -2127,13 +2144,13 @@
     simpanUser(l);
   }
   function adminAktif(){
-    return daftarUser().filter(function(x){ return x.role === "admin" && x.aktif; }).length;
+    return daftarUser().filter(function(x){ return (x.role === "manager" || x.role === "admin") && x.aktif; }).length;
   }
   function seedAwal(){
     if(modeSheet()) return Promise.resolve();      // akun dibuat oleh setup() di Apps Script
     if(daftarUser().length) return Promise.resolve();
     return buatSandi(SEED_PW).then(function(h){
-      simpanUser([{ u:SEED_USER, nama:"Administrator", role:"admin", aktif:true,
+      simpanUser([{ u:SEED_USER, nama:"Administrator", role:"manager", aktif:true,
                     salt:h.salt, hash:h.hash, bawaan:true, dibuat:Date.now(), lastLogin:null }]);
     });
   }
@@ -2207,7 +2224,7 @@
   /* ---------- login / logout ---------- */
   function pasangIdentitas(){
     if(!me) return;
-    var inisial = (me.nama || me.u).trim().split(/\s+/).slice(0,2)
+    var inisial = (me.nama || me.u).trim().split(/s+/).slice(0,2)
                     .map(function(w){ return w.charAt(0); }).join("").toUpperCase();
     $("#whoAva").textContent  = inisial || "?";
     $("#whoName").textContent = me.nama || me.u;
@@ -2272,7 +2289,7 @@
     if(!user.aktif){
       selesaiMasuk();
       logIt("Login gagal", "akun nonaktif", user);
-      return galatLogin("Akun ini dinonaktifkan. Hubungi admin.");
+      return galatLogin("Akun ini dinonaktifkan. Hubungi Manager/Admin.");
     }
 
     cekSandi(user, pw).then(function(cocok){
@@ -2354,7 +2371,7 @@
     if(!d) return showHome();
     if(!canSys(name)){
       logIt("Akses ditolak", d.label);
-      toastMsg("Halaman <b>"+d.label+"</b> hanya untuk Admin.", false);
+      toastMsg("Halaman <b>"+d.label+"</b> hanya untuk Manager.", false);
       return showHome();
     }
 
@@ -2420,8 +2437,8 @@
     if(!box) return;
     box.className = "conn " + (modeSheet() ? "ok" : "warn");
     box.innerHTML = modeSheet()
-      ? '<b>Google Sheet</b><span>Data user dan audit log tersimpan permanen, sama di semua browser dan perangkat.</span>'
-      : '<b>Browser ini saja</b><span>API.url belum diisi, jadi data hanya ada di localStorage browser ini dan hilang kalau ganti browser atau perangkat.</span>';
+      ? '<b>Google Sheet</b><span>Data user dan audit log tersimpan permanen di spreadsheet asli.</span>'
+      : '<b>Browser ini saja</b><span>API.url belum diisi, jadi data hanya ada di localStorage browser ini.</span>';
     if(modeSheet()){
       var t = el("button","btn ghost sm","Uji koneksi");
       t.type = "button";
@@ -2489,8 +2506,8 @@
 
     if(act === "aktif"){
       if(sendiri) return toastMsg("Akun sendiri tidak bisa dinonaktifkan.", false);
-      if(u.aktif && u.role === "admin" && adminAktif() <= 1)
-        return toastMsg("Minimal harus ada satu admin aktif.", false);
+      if(u.aktif && (u.role === "manager" || u.role === "admin") && adminAktif() <= 1)
+        return toastMsg("Minimal harus ada satu pengelola (Manager/Admin) aktif.", false);
 
       if(modeSheet()){
         tabelSibuk(true);
@@ -2508,8 +2525,8 @@
 
     if(act === "hapus"){
       if(sendiri) return toastMsg("Akun sendiri tidak bisa dihapus.", false);
-      if(u.role === "admin" && adminAktif() <= 1)
-        return toastMsg("Minimal harus ada satu admin aktif.", false);
+      if((u.role === "manager" || u.role === "admin") && adminAktif() <= 1)
+        return toastMsg("Minimal harus ada satu pengelola (Manager/Admin) aktif.", false);
       return tanya({
         judul: "Hapus user?",
         pesan: "<b>" + esc(u.nama) + "</b> (" + esc(u.u) + ") akan dihapus permanen dan tidak bisa dipulihkan.",
@@ -2543,7 +2560,7 @@
 
     $("#mdNama").value  = u ? u.nama : "";
     $("#mdUser").value  = u ? u.u : "";
-    $("#mdRole").value  = u ? u.role : "outlet";
+    $("#mdRole").value  = u ? u.role : "crew_cafe";
     $("#mdAktif").value = u ? (u.aktif ? "1" : "0") : "1";
     $("#mdPass").value  = "";
     $("#mdPass").type   = "password";
@@ -2591,7 +2608,7 @@
         role = $("#mdRole").value,
         aktif = $("#mdAktif").value === "1";
 
-    // Mode sheet: seluruh aturan (unik, minimal satu admin, panjang password)
+    // Mode sheet: seluruh aturan (unik, minimal satu admin/manager, panjang password)
     // ditegakkan lagi di server, jadi tidak bisa dilewati dari browser.
     if(modeSheet()){
       var muatan;
@@ -2673,11 +2690,11 @@
 
     // mode edit
     var sendiri = me && targetUser.u.toLowerCase() === me.u.toLowerCase();
-    if(sendiri && role !== "admin" && targetUser.role === "admin" && adminAktif() <= 1)
-      return galatModal("Minimal harus ada satu admin aktif.");
+    if(sendiri && (role !== "manager" && role !== "admin") && (targetUser.role === "manager" || targetUser.role === "admin") && adminAktif() <= 1)
+      return galatModal("Minimal harus ada satu pengelola (Manager/Admin) aktif.");
     if(!aktif && sendiri) return galatModal("Akun sendiri tidak bisa dinonaktifkan.");
-    if(targetUser.role === "admin" && targetUser.aktif && (role !== "admin" || !aktif) && adminAktif() <= 1)
-      return galatModal("Minimal harus ada satu admin aktif.");
+    if((targetUser.role === "manager" || targetUser.role === "admin") && targetUser.aktif && (role !== "manager" && role !== "admin" || !aktif) && adminAktif() <= 1)
+      return galatModal("Minimal harus ada satu pengelola (Manager/Admin) aktif.");
 
     var ubah = [];
     if(targetUser.nama !== nama)  ubah.push("nama");
@@ -2755,7 +2772,8 @@
     var baris = [["Waktu","Username","Nama","Role","Aksi","Detail"].join(",")].concat(
       rows.map(function(r){ return [fmtWaktu(r.t), r.u, r.nama, r.role, r.aksi, r.detail].map(sel).join(","); })
     );
-    var blob = new Blob(["﻿" + baris.join("\r\n")], { type:"text/csv;charset=utf-8" });
+    var blob = new Blob(["﻿" + baris.join("
+")], { type:"text/csv;charset=utf-8" });
     var url = URL.createObjectURL(blob), a = document.createElement("a");
     var d = new Date();
     a.href = url;

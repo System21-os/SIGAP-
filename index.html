@@ -744,9 +744,10 @@
     font-size:var(--t-xs);font-weight:600;letter-spacing:-.004em;
     border:1px solid var(--line);background:var(--surface-2);color:var(--txt-2);white-space:nowrap;
   }
-  .chip.admin{border-color:var(--acc-line);background:var(--acc-soft);color:var(--acc-2)}
-  .chip.area{border-color:#c9e2f7;background:#eaf4fc;color:#1d5f8f}
-  .chip.outlet{border-color:#dfd4f7;background:#f2ecfd;color:#5b21b6}
+  .chip.manager{border-color:#dfd4f7;background:#f2ecfd;color:#5b21b6}
+  .chip.accounting{border-color:var(--acc-line);background:var(--acc-soft);color:var(--acc-2)}
+  .chip.crew_cafe{border-color:#c9e2f7;background:#eaf4fc;color:#1d5f8f}
+  .chip.crew_premiere{border-color:var(--warn-line);background:var(--warn-soft);color:var(--warn)}
   .chip.on{border-color:var(--ok-line);background:var(--ok-soft);color:#0a6b45}
   .chip.off{border-color:var(--bad-line);background:var(--bad-soft);color:#a8332a}
   .chip.bad{border-color:var(--bad-line);background:var(--bad-soft);color:#a8332a}
@@ -1400,9 +1401,10 @@
     </label>
     <label class="field"><span>Role</span>
       <span class="wrap"><select class="inp" id="mdRole">
-        <option value="admin">Admin — akses penuh</option>
-        <option value="area">Area — semua dashboard, tanpa menu sistem</option>
-        <option value="outlet">Outlet — dashboard terbatas</option>
+        <option value="manager">Manager — akses penuh</option>
+        <option value="accounting">Accounting — semua dashboard, tanpa Sistem</option>
+        <option value="crew_cafe">Crew Cafe — Cafe &amp; All SK</option>
+        <option value="crew_premiere">Crew Premiere — Premiere &amp; All SK</option>
       </select></span>
     </label>
     <label class="field"><span>Status</span>
@@ -1487,12 +1489,14 @@
      sys  : halaman sistem yang boleh dibuka
      =========================================================== */
   var ROLES = {
-    admin:  { label:"Admin",  desc:"Akses penuh",
-              deny:[], sys:["master","audit"] },
-    area:   { label:"Area",   desc:"Semua dashboard, tanpa menu sistem",
-              deny:[], sys:[] },
-    outlet: { label:"Outlet", desc:"Dashboard terbatas",
-              deny:["best-cashier","kpi-analyst","google-review","inventory-report"], sys:[] }
+    manager: { label:"Manager", desc:"Akses penuh tanpa batasan",
+               allow:null, deny:[], sys:["master","audit"] },
+    accounting: { label:"Accounting", desc:"Semua dashboard, tanpa halaman Sistem",
+               allow:null, deny:[], sys:[] },
+    crew_cafe: { label:"Crew Cafe", desc:"Hanya halaman Cafe & All SK",
+               allow:["sigap-cafe","Transit-Cafe","Weekly-cafe","all-sk"], deny:[], sys:[] },
+    crew_premiere: { label:"Crew Premiere", desc:"Hanya halaman Premiere & All SK",
+               allow:["sigap-premiere","Weekly-Premiere","all-sk"], deny:[], sys:[] }
   };
 
   var SYS = {
@@ -1566,9 +1570,16 @@
     try{ return location.hash.replace(/^#\/?/, ""); }catch(e){ return ""; }
   }
 
-  function roleDef(){ return (me && ROLES[me.role]) || { label:"–", deny:[], sys:[] }; }
-  function allowed(id){ return !!me && !!byId[id] && roleDef().deny.indexOf(id) < 0; }
-  function canSys(name){ return !!me && roleDef().sys.indexOf(name) > -1; }
+  function roleDef(){
+    var r = me && ROLES[me.role];
+    if(!r && me && me.role === "admin") r = ROLES.manager; // migrasi klien: role lama "admin" -> manager
+    return r || { label:"–", allow:[], deny:[], sys:[] };
+  }
+  function allowed(id){
+    if(!me || !byId[id]) return false;
+    var r = roleDef();
+    return r.allow ? r.allow.indexOf(id) > -1 : r.deny.indexOf(id) < 0;
+  }  function canSys(name){ return !!me && roleDef().sys.indexOf(name) > -1; }
 
   /* ---------- logo: pakai assets/logo.png bila tersedia ---------- */
   (function initLogo(){
@@ -2126,15 +2137,14 @@
     if(!ada) l.push(user);
     simpanUser(l);
   }
-  function adminAktif(){
-    return daftarUser().filter(function(x){ return x.role === "admin" && x.aktif; }).length;
+  function managerAktif(){
+    return daftarUser().filter(function(x){ return x.role === "manager" && x.aktif; }).length;
   }
   function seedAwal(){
     if(modeSheet()) return Promise.resolve();      // akun dibuat oleh setup() di Apps Script
     if(daftarUser().length) return Promise.resolve();
     return buatSandi(SEED_PW).then(function(h){
-      simpanUser([{ u:SEED_USER, nama:"Administrator", role:"admin", aktif:true,
-                    salt:h.salt, hash:h.hash, bawaan:true, dibuat:Date.now(), lastLogin:null }]);
+      simpanUser([{ u:SEED_USER, nama:"Administrator", role:"manager", aktif:true,                    salt:h.salt, hash:h.hash, bawaan:true, dibuat:Date.now(), lastLogin:null }]);
     });
   }
 
@@ -2354,7 +2364,7 @@
     if(!d) return showHome();
     if(!canSys(name)){
       logIt("Akses ditolak", d.label);
-      toastMsg("Halaman <b>"+d.label+"</b> hanya untuk Admin.", false);
+      toastMsg("Halaman <b>"+d.label+"</b> hanya untuk Manager.", false);
       return showHome();
     }
 
@@ -2489,9 +2499,8 @@
 
     if(act === "aktif"){
       if(sendiri) return toastMsg("Akun sendiri tidak bisa dinonaktifkan.", false);
-      if(u.aktif && u.role === "admin" && adminAktif() <= 1)
-        return toastMsg("Minimal harus ada satu admin aktif.", false);
-
+      if(u.aktif && u.role === "manager" && managerAktif() <= 1)
+        return toastMsg("Minimal harus ada satu Manager aktif.", false);
       if(modeSheet()){
         tabelSibuk(true);
         return apiCall("saveUser", { mode:"edit", u:u.u, nama:u.nama, role:u.role, aktif: u.aktif ? 0 : 1 })
@@ -2508,8 +2517,8 @@
 
     if(act === "hapus"){
       if(sendiri) return toastMsg("Akun sendiri tidak bisa dihapus.", false);
-      if(u.role === "admin" && adminAktif() <= 1)
-        return toastMsg("Minimal harus ada satu admin aktif.", false);
+      if(u.role === "manager" && managerAktif() <= 1)
+        return toastMsg("Minimal harus ada satu Manager aktif.", false);
       return tanya({
         judul: "Hapus user?",
         pesan: "<b>" + esc(u.nama) + "</b> (" + esc(u.u) + ") akan dihapus permanen dan tidak bisa dipulihkan.",
@@ -2543,7 +2552,7 @@
 
     $("#mdNama").value  = u ? u.nama : "";
     $("#mdUser").value  = u ? u.u : "";
-    $("#mdRole").value  = u ? u.role : "outlet";
+    $("#mdRole").value  = u ? u.role : "crew_cafe";
     $("#mdAktif").value = u ? (u.aktif ? "1" : "0") : "1";
     $("#mdPass").value  = "";
     $("#mdPass").type   = "password";
@@ -2673,11 +2682,11 @@
 
     // mode edit
     var sendiri = me && targetUser.u.toLowerCase() === me.u.toLowerCase();
-    if(sendiri && role !== "admin" && targetUser.role === "admin" && adminAktif() <= 1)
-      return galatModal("Minimal harus ada satu admin aktif.");
+    if(sendiri && role !== "manager" && targetUser.role === "manager" && managerAktif() <= 1)
+      return galatModal("Minimal harus ada satu Manager aktif.");
     if(!aktif && sendiri) return galatModal("Akun sendiri tidak bisa dinonaktifkan.");
-    if(targetUser.role === "admin" && targetUser.aktif && (role !== "admin" || !aktif) && adminAktif() <= 1)
-      return galatModal("Minimal harus ada satu admin aktif.");
+    if(targetUser.role === "manager" && targetUser.aktif && (role !== "manager" || !aktif) && managerAktif() <= 1)
+      return galatModal("Minimal harus ada satu Manager aktif.");
 
     var ubah = [];
     if(targetUser.nama !== nama)  ubah.push("nama");
